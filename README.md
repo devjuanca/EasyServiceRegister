@@ -1,9 +1,9 @@
-## Version 2.0.0 of EasyServiceRegister has some break changes, code has been optimized and other cool stuff has been added!!
+## Version 2.0.2 of EasyServiceRegister has some break changes, code has been optimized and other cool stuff has been added!!
 
 ### How to use it:
 1. First you will need to install the package in the project where your services implementations will be.
 ```
-dotnet add package EasyServiceRegister --version 2.0.1 (.net 6 or superior)
+dotnet add package EasyServiceRegister --version 2.0.1 (.net 6 or supperior)
 ```
 2. Then in each service class you must add one of the following class attributes:
 ```
@@ -11,6 +11,8 @@ RegisterAsSingleton  --> It will register your service as Singleton.
 RegisterAsScoped    --> It will register your service as Scoped.
 RegisterAsTransient --> It will register your service as Transcient.
 ```
+note: Each attribute has a parameter indicating if your service must be registered using TryAdd or just Add, by default this property will be false. 
+
 3. Finally you must register your services using the following extension method
 ```
 services.AddServices(params Type[] handlerAssemblyMarkerTypes);
@@ -56,7 +58,7 @@ public class ProductCommandServices : IProductCommandServices
 }
 ```
 ```
-[RegisterAsSingleton]
+[RegisterAsSingleton(useTryAddSingleton: true)]
 public class GetCurrentUser
 {
   public Task<User> GetCurrentUser()

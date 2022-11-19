@@ -1,7 +1,7 @@
+using Infrastructure;
 using Presentation;
 using Presentation.EndpointsRegistration;
 using ServiceInyector;
-using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +9,8 @@ var configuration = builder.Configuration;
 
 builder.AddServices();
 
-builder.Services.AddServices(new List<string> { "Infrastructure", "Presentation" });
+builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
+
 
 builder.Services.AddEndpointDefinitions(configuration);
 

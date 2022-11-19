@@ -19,7 +19,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Application\Application.csproj" />
-		<ProjectReference Include="..\ServiceInyector\ServiceInyector.csproj" />
+		<ProjectReference Include="..\ServiceInyector\EasyServiceRegister.csproj" />
 	</ItemGroup>
 
 </Project>

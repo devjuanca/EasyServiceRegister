@@ -1,9 +1,10 @@
 using Application.Interfaces;
-using ServiceInyector.Interfaces;
+using ServiceInyector.Attributes;
 
 namespace Presentation.Services;
 
-public class AppSettingsService : IAppSettingsService, IRegisterAsSingleton
+[RegisterAsSingleton]
+public class AppSettingsService : IAppSettingsService
 {
     private readonly IConfiguration _configuration;
 

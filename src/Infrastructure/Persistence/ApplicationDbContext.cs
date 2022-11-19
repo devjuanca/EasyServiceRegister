@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Application.Interfaces;
 using Domain.Common;
+using ServiceInyector.Attributes;
 
 namespace Infrastructure.Persistence;
 
+[RegisterAsScoped]
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     private readonly ICurrentUserService _currentUserService;

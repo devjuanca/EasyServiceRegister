@@ -1,9 +1,10 @@
 ﻿using Application.Interfaces;
-using ServiceInyector.Interfaces;
+using ServiceInyector.Attributes;
 
 namespace Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 
-public class DateTimeService : IDateTime, IRegisterAsTranscient
+[RegisterAsTransient]
+public class DateTimeService : IDateTime
 {
     public DateTime Now => DateTime.UtcNow;
 }

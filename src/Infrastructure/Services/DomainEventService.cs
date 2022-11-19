@@ -3,11 +3,12 @@ using Application.Models;
 using Domain.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using ServiceInyector.Interfaces;
+using ServiceInyector.Attributes;
 
 namespace Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 
-public class DomainEventService : IDomainEventService, IRegisterAsTranscient
+[RegisterAsTransient]
+public class DomainEventService : IDomainEventService
 {
     private readonly ILogger<DomainEventService> _logger;
     private readonly IPublisher _mediator;

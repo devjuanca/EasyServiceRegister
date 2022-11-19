@@ -1,72 +1,80 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using ServiceInyector.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using ServiceInyector.Attributes;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace ServiceInyector
+namespace ServiceInyector;
+
+public static class ServiceExtension
 {
-    public static class ServiceExtension
+    public static void AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
     {
-        public static void AddServices(this IServiceCollection services, List<string> projectsAssembly)
+        try
         {
-            try
+            foreach (var markerType in handlerAssemblyMarkerTypes)
             {
-                var servicesToRegister = new List<IServiceRegistrationType>();
-                List<Assembly> assemblies = new();
+                Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
 
-                foreach (var assemblyName in projectsAssembly)
+                var singletonServicesToRegister = assembly.ExportedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonAttribute>() is not null);
+
+                var scopedServicesToRegister = assembly.ExportedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedAttribute>() is not null);
+
+                var transientServicesToRegister = assembly.ExportedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientAttribute>() is not null);
+
+                foreach (var implementationType in singletonServicesToRegister)
                 {
-                    Assembly assembly = Assembly.LoadFile(Path.Combine(Path.GetDirectoryName(Assembly.GetCallingAssembly().Location)!, $"{assemblyName}.dll"));
+                    var typeInfo = implementationType.GetTypeInfo();
 
-                    var temp = assembly.ExportedTypes
-                             .Where(x => typeof(IServiceRegistrationType).IsAssignableFrom(x) && !x.IsInterface && !x.IsAbstract);
-
-                    foreach (var implementationType in temp)
+                    if (!typeInfo.ImplementedInterfaces.Any())
                     {
-                        var typeInfo = implementationType.GetTypeInfo();
-
+                        services.AddSingleton(implementationType);
+                    }
+                    else
+                    {
                         Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
 
-                        Type registerType = typeInfo.ImplementedInterfaces.ToArray()[1];
+                        services.AddSingleton(abstractionType, implementationType);
+                    }
+                }
 
-                        switch (registerType.Name)
-                        {
-                            case "IRegisterAsScoped":
-                                {
-                                    services.AddScoped(abstractionType, implementationType);
-                                }
-                                break;
-                            case "IRegisterAsSingleton":
-                                {
-                                    services.AddSingleton(abstractionType, implementationType);
-                                }
-                                break;
-                            case "IRegisterAsTranscient":
-                                {
-                                    services.AddTransient(abstractionType, implementationType);
-                                }
-                                break;
-                            default:
-                                {
-                                    services.AddScoped(abstractionType, implementationType);
-                                }
-                                break;
-                        }
+                foreach (var implementationType in scopedServicesToRegister)
+                {
+                    var typeInfo = implementationType.GetTypeInfo();
 
+                    if (!typeInfo.ImplementedInterfaces.Any())
+                    {
+                        services.AddScoped(implementationType);
+                    }
+                    else
+                    {
+                        Type abstractionType = typeInfo.ImplementedInterfaces.ToArray().Last();
+
+                        services.AddScoped(abstractionType, implementationType);
+                    }
+                }
+
+                foreach (var implementationType in transientServicesToRegister)
+                {
+                    var typeInfo = implementationType.GetTypeInfo();
+
+                    if (!typeInfo.ImplementedInterfaces.Any())
+                    {
+                        services.AddTransient(implementationType);
+                    }
+                    else
+                    {
+                        Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
+
+                        services.AddTransient(abstractionType, implementationType);
                     }
                 }
             }
-            catch
-            {
-                throw;
-            }
-
-
-
         }
+        catch
+        {
+            throw;
+        }
+
+
+
     }
 }

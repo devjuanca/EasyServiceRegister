@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using ServiceInyector;
 using Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 
 namespace Infrastructure;
@@ -27,7 +28,10 @@ public static class DependencyInjection
 
         }
 
-        services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
+
+
+
+        //services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
         //services.AddTransient<IDateTime, DateTimeService>();
         //services.AddTransient<IDomainEventService, DomainEventService>();
 

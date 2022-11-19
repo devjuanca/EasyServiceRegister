@@ -4,11 +4,12 @@ using Application.Interfaces.ProductServices;
 using AutoMapper;
 using Domain.Entities;
 using MediatR;
-using ServiceInyector.Interfaces;
+using ServiceInyector.Attributes;
 
 namespace Infrastructure.Services.ProductServices;
 
-public class ProductCommandServices : IProductCommandServices, IRegisterAsScoped
+[RegisterAsScoped]
+public class ProductCommandServices : IProductCommandServices
 {
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;

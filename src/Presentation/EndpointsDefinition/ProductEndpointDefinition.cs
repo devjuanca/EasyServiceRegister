@@ -1,8 +1,6 @@
 ﻿using Application.Common.Dto;
 using Application.Cqrs.Products.Command;
 using Application.Cqrs.Products.Query;
-using Application.Interfaces.ProductServices;
-using Infrastructure.Services.ProductServices;
 using MediatR;
 using Presentation.EndpointsRegistration;
 

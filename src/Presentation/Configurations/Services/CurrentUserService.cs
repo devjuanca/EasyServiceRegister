@@ -1,13 +1,12 @@
-﻿using System.Security.Claims;
-using System.Threading.Tasks;
+﻿using Application.Interfaces;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
-using Application.Interfaces;
-using ServiceInyector.Interfaces;
+using ServiceInyector.Attributes;
+using System.Security.Claims;
 
 namespace Presentation.Services;
 
-public class CurrentUserService : ICurrentUserService, IRegisterAsSingleton
+[RegisterAsSingleton]
+public class CurrentUserService : ICurrentUserService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 

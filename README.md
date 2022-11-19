@@ -3,7 +3,7 @@
 ### How to use it:
 1. First you will need to install the package in the project where your services implementations will be.
 ```
-dotnet add package EasyServiceRegister --version 2.0.1 (.net 6 or supperior)
+dotnet add package EasyServiceRegister --version 2.0.1 (.net 6 or superior)
 ```
 2. Then in each service class you must add one of the following class attributes:
 ```

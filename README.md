@@ -19,6 +19,29 @@ Each handlerAssemblyMarkerTypes must be a type from the assembly where your serv
 
 Here is an example of a service implementation:
 ```
+var builder = WebApplication.CreateBuilder(args);
+
+var configuration = builder.Configuration;
+
+// In this case services from two differents assemblies are been registered into IoC 
+builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
+
+builder.Services.AddEndpointDefinitions(configuration);
+
+var app = builder.Build();
+
+app.ConfigurePipeline();
+
+app.UseEndpointDefinitions();
+
+await app.ApplySeeder();
+
+await app.RunAsync();
+```
+
+
+
+```
 [RegisterAsScoped]
 public class ProductCommandServices : IProductCommandServices
 {

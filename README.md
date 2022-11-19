@@ -1,31 +1,49 @@
-## This is a package that makes it easier to register services in your .Net application.
+## Version 2.0.0 of EasyServiceRegister has some break changes, code has been optimized and other cool stuff has been added!!
 
 ### How to use it:
 1. First you will need to install the package in the project where your services implementations will be.
 ```
-Install-Package EasyServiceRegister -Version 0.0.8  (for .Net Core 3.1 projects)
+dotnet add package EasyServiceRegister --version 2.0.1 (.net 6 or superior)
 ```
+2. Then in each service class you must add one of the following class attributes:
 ```
-Install-Package EasyServiceRegister -Version 0.0.9  (for .Net 5 projects)
+RegisterAsSingleton  --> It will register your service as Singleton.
+RegisterAsScoped    --> It will register your service as Scoped.
+RegisterAsTransient --> It will register your service as Transcient.
 ```
+3. Finally you must register your services using the following extension method
 ```
-Install-Package EasyServiceRegister -Version 1.0.0  (for .Net 6 projects)
+services.AddServices(params Type[] handlerAssemblyMarkerTypes);
 ```
-2. Then in each service class you must implement one of the following interfaces:
-```
-IRegisterAsSingleton  --> It will register your service as Singleton.
-IRegisterAsScoped     --> It will register your service as Scoped.
-IRegisterAsTranscient --> It will register your service as Transcient.
-```
-3. Finally in your Startup class or Program you must add the next extension method:
-```
-services.AddServices(new List<string> { "Infrastructure" });
-```
-The method receives a list of project names where your services implementations are.
+Each handlerAssemblyMarkerTypes must be a type from the assembly where your services are.
 
 Here is an example of a service implementation:
 ```
-public class ProductCommandServices : IProductCommandServices, IRegisterAsScoped
+var builder = WebApplication.CreateBuilder(args);
+
+var configuration = builder.Configuration;
+
+// In this case services from two differents assemblies are been registered into IoC 
+builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
+
+builder.Services.AddEndpointDefinitions(configuration);
+
+var app = builder.Build();
+
+app.ConfigurePipeline();
+
+app.UseEndpointDefinitions();
+
+await app.ApplySeeder();
+
+await app.RunAsync();
+```
+
+
+
+```
+[RegisterAsScoped]
+public class ProductCommandServices : IProductCommandServices
 {
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;
@@ -37,12 +55,25 @@ public class ProductCommandServices : IProductCommandServices, IRegisterAsScoped
     }
 }
 ```
-Consider the following:
-```diff
-* First interface must always be the service abstraction, second one must be the corresponding Easy Service Register interface. 
-  (Check the example)
-
-* The abstractions must be in a different project than the implementations. (something like, Application and Infrastructure)
+```
+[RegisterAsSingleton]
+public class GetCurrentUser
+{
+  public Task<User> GetCurrentUser()
+   {
+     ...
+   }
+}
 ```
 
+Consider the following:
+In case your service implement an interface to abstract itself, that interface must be the last you implement.
+  Ex.
+```
+[RegisterAsScoped]
+ public class ProductCommandServices : ISomeOtherInterface, IProductCommandServices
+{
+ ...
+}
+```
 And that's it!! No more loaded Startup classes or huge extension methods registering services in your code. :)

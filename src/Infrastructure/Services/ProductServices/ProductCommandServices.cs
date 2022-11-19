@@ -9,7 +9,7 @@ using ServiceInyector.Attributes;
 namespace Infrastructure.Services.ProductServices;
 
 [RegisterAsScoped]
-public class ProductCommandServices : IProductCommandServices
+internal class ProductCommandServices : IProductCommandServices
 {
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;

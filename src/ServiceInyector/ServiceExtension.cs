@@ -14,11 +14,11 @@ public static class ServiceExtension
             {
                 Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
 
-                var singletonServicesToRegister = assembly.ExportedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonAttribute>() is not null);
+                var singletonServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonAttribute>() is not null);
 
-                var scopedServicesToRegister = assembly.ExportedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedAttribute>() is not null);
+                var scopedServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedAttribute>() is not null);
 
-                var transientServicesToRegister = assembly.ExportedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientAttribute>() is not null);
+                var transientServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientAttribute>() is not null);
 
                 foreach (var implementationType in singletonServicesToRegister)
                 {

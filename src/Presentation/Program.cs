@@ -11,13 +11,10 @@ builder.AddServices();
 
 builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
 
-
 builder.Services.AddEndpointDefinitions(configuration);
 
 var app = builder.Build();
 
-
-// Configure the HTTP request pipeline.
 app.ConfigurePipeline();
 
 app.UseEndpointDefinitions();

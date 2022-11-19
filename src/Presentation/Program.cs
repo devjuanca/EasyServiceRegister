@@ -1,7 +1,7 @@
 using Infrastructure;
 using Presentation;
 using Presentation.EndpointsRegistration;
-using ServiceInyector;
+using EasyServiceRegister;
 
 var builder = WebApplication.CreateBuilder(args);
 

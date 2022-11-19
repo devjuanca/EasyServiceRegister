@@ -1,5 +1,5 @@
 ﻿using Application.Interfaces;
-using ServiceInyector.Attributes;
+using EasyServiceRegister.Attributes;
 
 namespace Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 

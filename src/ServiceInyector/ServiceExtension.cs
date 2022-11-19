@@ -1,12 +1,19 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using ServiceInyector.Attributes;
+using EasyServiceRegister.Attributes;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace ServiceInyector;
+namespace EasyServiceRegister;
 
 public static class ServiceExtension
 {
-    public static void AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
+    /// <summary>
+    /// Extension method to register all services marked with attributes [RegisterAsSingleton], [RegisterAsScoped] or [RegisterAsTransient].
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="handlerAssemblyMarkerTypes"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
     {
         try
         {
@@ -24,15 +31,23 @@ public static class ServiceExtension
                 {
                     var typeInfo = implementationType.GetTypeInfo();
 
+                    var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>()?.UseTryAddSingleton ?? true;
+
                     if (!typeInfo.ImplementedInterfaces.Any())
                     {
-                        services.AddSingleton(implementationType);
+                        if (registerBehaviour)
+                            services.AddSingleton(implementationType);
+                        else
+                            services.TryAddSingleton(implementationType);
                     }
                     else
                     {
                         Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
 
-                        services.AddSingleton(abstractionType, implementationType);
+                        if (registerBehaviour)
+                            services.AddSingleton(abstractionType, implementationType);
+                        else
+                            services.AddSingleton(abstractionType, implementationType);
                     }
                 }
 
@@ -40,15 +55,23 @@ public static class ServiceExtension
                 {
                     var typeInfo = implementationType.GetTypeInfo();
 
+                    var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>()?.UseTryAddScoped ?? true;
+
                     if (!typeInfo.ImplementedInterfaces.Any())
                     {
-                        services.AddScoped(implementationType);
+                        if (!registerBehaviour)
+                            services.AddScoped(implementationType);
+                        else
+                            services.TryAddScoped(implementationType);
                     }
                     else
                     {
                         Type abstractionType = typeInfo.ImplementedInterfaces.ToArray().Last();
 
-                        services.AddScoped(abstractionType, implementationType);
+                        if (!registerBehaviour)
+                            services.AddScoped(abstractionType, implementationType);
+                        else
+                            services.TryAddScoped(abstractionType, implementationType);
                     }
                 }
 
@@ -56,18 +79,28 @@ public static class ServiceExtension
                 {
                     var typeInfo = implementationType.GetTypeInfo();
 
+                    var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>()?.UseTryAddTransient ?? false;
+
                     if (!typeInfo.ImplementedInterfaces.Any())
                     {
-                        services.AddTransient(implementationType);
+                        if (!registerBehaviour)
+                            services.AddTransient(implementationType);
+                        else
+                            services.TryAddTransient(implementationType);
                     }
                     else
                     {
                         Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
 
-                        services.AddTransient(abstractionType, implementationType);
+                        if (!registerBehaviour)
+                            services.AddTransient(abstractionType, implementationType);
+                        else
+                            services.TryAddTransient(abstractionType, implementationType);
                     }
                 }
             }
+
+            return services;
         }
         catch
         {

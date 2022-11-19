@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Application.Interfaces;
 using Domain.Common;
-using ServiceInyector.Attributes;
+using EasyServiceRegister.Attributes;
 
 namespace Infrastructure.Persistence;
 

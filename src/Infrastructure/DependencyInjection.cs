@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using ServiceInyector;
+using EasyServiceRegister;
 using Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 
 namespace Infrastructure;

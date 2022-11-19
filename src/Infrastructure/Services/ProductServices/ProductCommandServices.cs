@@ -4,11 +4,11 @@ using Application.Interfaces.ProductServices;
 using AutoMapper;
 using Domain.Entities;
 using MediatR;
-using ServiceInyector.Attributes;
+using EasyServiceRegister.Attributes;
 
 namespace Infrastructure.Services.ProductServices;
 
-[RegisterAsScoped]
+[RegisterAsScoped(UseTryAddScoped = false)]
 internal class ProductCommandServices : IProductCommandServices
 {
     private readonly IApplicationDbContext _context;

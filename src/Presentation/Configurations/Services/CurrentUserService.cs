@@ -1,6 +1,6 @@
 ﻿using Application.Interfaces;
 using Microsoft.AspNetCore.Authentication;
-using ServiceInyector.Attributes;
+using EasyServiceRegister.Attributes;
 using System.Security.Claims;
 
 namespace Presentation.Services;

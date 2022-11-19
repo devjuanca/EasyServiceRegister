@@ -3,7 +3,7 @@ using Application.Models;
 using Domain.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using ServiceInyector.Attributes;
+using EasyServiceRegister.Attributes;
 
 namespace Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 

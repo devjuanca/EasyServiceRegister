@@ -5,7 +5,7 @@ using System.Security.Claims;
 
 namespace Presentation.Services;
 
-[RegisterAsSingleton]
+[RegisterAsSingleton(useTryAddSingleton: true)]
 public class CurrentUserService : ICurrentUserService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;

@@ -8,7 +8,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Folder Include="Common\DataFilters\" />
+	  <Compile Remove="Common\DataFilters\**" />
+	  <EmbeddedResource Remove="Common\DataFilters\**" />
+	  <None Remove="Common\DataFilters\**" />
 	</ItemGroup>
 
 	<ItemGroup>

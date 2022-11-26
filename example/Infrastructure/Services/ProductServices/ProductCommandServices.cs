@@ -8,7 +8,7 @@ using EasyServiceRegister.Attributes;
 
 namespace Infrastructure.Services.ProductServices;
 
-[RegisterAsScoped(UseTryAddScoped = false)]
+[RegisterAsScoped(useTryAddScoped: false)]
 internal class ProductCommandServices : IProductCommandServices
 {
     private readonly IApplicationDbContext _context;

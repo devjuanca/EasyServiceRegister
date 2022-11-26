@@ -2,112 +2,116 @@
 using EasyServiceRegister.Attributes;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System;
+using System.Linq;
 
-namespace EasyServiceRegister;
-
-public static class ServiceExtension
+namespace EasyServiceRegister
 {
-    /// <summary>
-    /// Extension method to register all services marked with attributes [RegisterAsSingleton], [RegisterAsScoped] or [RegisterAsTransient].
-    /// </summary>
-    /// <param name="services"></param>
-    /// <param name="handlerAssemblyMarkerTypes"></param>
-    /// <returns></returns>
-    public static IServiceCollection AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
+
+    public static class ServiceExtension
     {
-        try
+        /// <summary>
+        /// Extension method to register all services marked with attributes [RegisterAsSingleton], [RegisterAsScoped] or [RegisterAsTransient].
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="handlerAssemblyMarkerTypes"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
         {
-            foreach (var markerType in handlerAssemblyMarkerTypes)
+            try
             {
-                Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
-
-                var singletonServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonAttribute>() is not null);
-
-                var scopedServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedAttribute>() is not null);
-
-                var transientServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientAttribute>() is not null);
-
-                foreach (var implementationType in singletonServicesToRegister)
+                foreach (var markerType in handlerAssemblyMarkerTypes)
                 {
-                    var typeInfo = implementationType.GetTypeInfo();
+                    Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
 
-                    var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>()?.UseTryAddSingleton ?? true;
+                    var singletonServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonAttribute>() != null);
 
-                    if (!typeInfo.ImplementedInterfaces.Any())
+                    var scopedServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedAttribute>() != null);
+
+                    var transientServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientAttribute>() != null);
+
+                    foreach (var implementationType in singletonServicesToRegister)
                     {
-                        if (registerBehaviour)
-                            services.AddSingleton(implementationType);
+                        var typeInfo = implementationType.GetTypeInfo();
+
+                        var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>()?.UseTryAddSingleton ?? true;
+
+                        if (!typeInfo.ImplementedInterfaces.Any())
+                        {
+                            if (registerBehaviour)
+                                services.AddSingleton(implementationType);
+                            else
+                                services.TryAddSingleton(implementationType);
+                        }
                         else
-                            services.TryAddSingleton(implementationType);
+                        {
+                            Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
+
+                            if (registerBehaviour)
+                                services.AddSingleton(abstractionType, implementationType);
+                            else
+                                services.AddSingleton(abstractionType, implementationType);
+                        }
                     }
-                    else
-                    {
-                        Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
 
-                        if (registerBehaviour)
-                            services.AddSingleton(abstractionType, implementationType);
+                    foreach (var implementationType in scopedServicesToRegister)
+                    {
+                        var typeInfo = implementationType.GetTypeInfo();
+
+                        var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>()?.UseTryAddScoped ?? true;
+
+                        if (!typeInfo.ImplementedInterfaces.Any())
+                        {
+                            if (!registerBehaviour)
+                                services.AddScoped(implementationType);
+                            else
+                                services.TryAddScoped(implementationType);
+                        }
                         else
-                            services.AddSingleton(abstractionType, implementationType);
+                        {
+                            Type abstractionType = typeInfo.ImplementedInterfaces.ToArray().Last();
+
+                            if (!registerBehaviour)
+                                services.AddScoped(abstractionType, implementationType);
+                            else
+                                services.TryAddScoped(abstractionType, implementationType);
+                        }
+                    }
+
+                    foreach (var implementationType in transientServicesToRegister)
+                    {
+                        var typeInfo = implementationType.GetTypeInfo();
+
+                        var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>()?.UseTryAddTransient ?? false;
+
+                        if (!typeInfo.ImplementedInterfaces.Any())
+                        {
+                            if (!registerBehaviour)
+                                services.AddTransient(implementationType);
+                            else
+                                services.TryAddTransient(implementationType);
+                        }
+                        else
+                        {
+                            Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
+
+                            if (!registerBehaviour)
+                                services.AddTransient(abstractionType, implementationType);
+                            else
+                                services.TryAddTransient(abstractionType, implementationType);
+                        }
                     }
                 }
 
-                foreach (var implementationType in scopedServicesToRegister)
-                {
-                    var typeInfo = implementationType.GetTypeInfo();
-
-                    var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>()?.UseTryAddScoped ?? true;
-
-                    if (!typeInfo.ImplementedInterfaces.Any())
-                    {
-                        if (!registerBehaviour)
-                            services.AddScoped(implementationType);
-                        else
-                            services.TryAddScoped(implementationType);
-                    }
-                    else
-                    {
-                        Type abstractionType = typeInfo.ImplementedInterfaces.ToArray().Last();
-
-                        if (!registerBehaviour)
-                            services.AddScoped(abstractionType, implementationType);
-                        else
-                            services.TryAddScoped(abstractionType, implementationType);
-                    }
-                }
-
-                foreach (var implementationType in transientServicesToRegister)
-                {
-                    var typeInfo = implementationType.GetTypeInfo();
-
-                    var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>()?.UseTryAddTransient ?? false;
-
-                    if (!typeInfo.ImplementedInterfaces.Any())
-                    {
-                        if (!registerBehaviour)
-                            services.AddTransient(implementationType);
-                        else
-                            services.TryAddTransient(implementationType);
-                    }
-                    else
-                    {
-                        Type abstractionType = typeInfo.ImplementedInterfaces.ToArray()[0];
-
-                        if (!registerBehaviour)
-                            services.AddTransient(abstractionType, implementationType);
-                        else
-                            services.TryAddTransient(abstractionType, implementationType);
-                    }
-                }
+                return services;
+            }
+            catch
+            {
+                throw;
             }
 
-            return services;
+
+
         }
-        catch
-        {
-            throw;
-        }
-
-
-
     }
 }

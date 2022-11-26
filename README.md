@@ -1,9 +1,9 @@
-## Version 2.0.2 of EasyServiceRegister has some break changes, code has been optimized and other cool stuff has been added!!
+## Version 2.0.0 of EasyServiceRegister has some break changes, code has been optimized and other cool stuff has been added!!
 
 ### How to use it:
 1. First you will need to install the package in the project where your services implementations will be.
 ```
-dotnet add package EasyServiceRegister --version 2.0.2 (.net 6 or supperior)
+dotnet add package EasyServiceRegister --version 2.0.4 (.net 6 or supperior)
 ```
 2. Then in each service class you must add one of the following class attributes:
 ```

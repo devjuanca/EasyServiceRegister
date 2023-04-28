@@ -34,8 +34,8 @@ jobs:
       uses: actions/setup-dotnet@v3
 
     # Create the NuGet package in the folder from the environment variable NuGetDirectory
-    - name: Restore NuGet packages
-      run: dotnet restore
+   #- name: Restore NuGet packages
+   #  run: dotnet restore
 
     - name: Build EasyServiceRegister
       run: dotnet build source/EasyServiceRegister/EasyServiceRegister.csproj --configuration Release
@@ -49,7 +49,7 @@ jobs:
         name: nuget
         if-no-files-found: error
         retention-days: 7
-        path: ${{ env.NuGetDirectory }}/*.nupkg
+        path: ${{ env.NuGetDirectory }}/EasyServiceRegister.nupkg
 
   validate_nuget:
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
       # If some rules are not applicable, you can disable them
       # using the --excluded-rules or --excluded-rule-ids option
       - name: Validate package
-        run: meziantou.validate-nuget-package (Get-ChildItem "${{ env.NuGetDirectory }}/*.nupkg")
+        run: meziantou.validate-nuget-package (Get-ChildItem "${{ env.NuGetDirectory }}/EasyServiceRegister.nupkg")
 
   run_test:
     runs-on: ubuntu-latest
@@ -107,6 +107,6 @@ jobs:
       # If you retry a failed workflow, already published packages will be skipped without error.
       - name: Publish NuGet package
         run: |
-          foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
+          foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include EasyServiceRegister.nupkg)) {
               dotnet nuget push $file --api-key "${{ secrets.NUGET_APIKEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
           }

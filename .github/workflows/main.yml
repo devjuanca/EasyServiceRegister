@@ -34,10 +34,15 @@ jobs:
       uses: actions/setup-dotnet@v3
 
     # Create the NuGet package in the folder from the environment variable NuGetDirectory
-    - run: |
-          dotnet restore
-          dotnet pack source/EasyServiceRegister/EasyServiceRegister.csproj --configuration Release --output /home/runner/work/EasyServiceRegister/EasyServiceRegister/nuget
-          working-directory: ./source
+    - name: Restore NuGet packages
+      run: dotnet restore
+
+    - name: Build EasyServiceRegister
+      run: dotnet build source/EasyServiceRegister/EasyServiceRegister.csproj --configuration Release
+
+    - name: Create NuGet package
+      run: dotnet pack source/EasyServiceRegister/EasyServiceRegister.csproj --configuration Release --output /home/runner/work/EasyServiceRegister/EasyServiceRegister/nuget
+    
     # Publish the NuGet package as an artifact, so they can be used in the following jobs
     - uses: actions/upload-artifact@v3
       with:

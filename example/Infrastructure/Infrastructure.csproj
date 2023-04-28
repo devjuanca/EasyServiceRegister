@@ -19,7 +19,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\source\EasyServiceRegister\EasyServiceRegister.csproj" />
 		<ProjectReference Include="..\Application\Application.csproj" />
 	</ItemGroup>
 

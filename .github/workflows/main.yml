@@ -63,7 +63,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: nuget
-          path: ${{ env.NuGetDirectory/EasyServiceRegister.nupkg }}
+          path: ${{ env.NuGetDirectory}}
 
       - name: Install nuget validator
         run: dotnet tool update Meziantou.Framework.NuGetPackageValidation.Tool --global

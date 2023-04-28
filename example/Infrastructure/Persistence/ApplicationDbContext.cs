@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Application.Interfaces;
 using Domain.Common;
 using EasyServiceRegister.Attributes;
+using Infrastructure.Persistence.Services;
 
 namespace Infrastructure.Persistence;
 
@@ -12,7 +13,7 @@ namespace Infrastructure.Persistence;
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     private readonly ICurrentUserService _currentUserService;
-    private readonly IDateTime _dateTime;
+    private readonly DateTimeService _dateTime;
     private readonly IDomainEventService _domainEventService;
 
     public override DatabaseFacade Database { get { return base.Database; } }
@@ -23,7 +24,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         DbContextOptions options,
         ICurrentUserService currentUserService,
         IDomainEventService domainEventService,
-        IDateTime dateTime) : base(options)
+        DateTimeService dateTime) : base(options)
     {
         _currentUserService = currentUserService;
         _domainEventService = domainEventService;

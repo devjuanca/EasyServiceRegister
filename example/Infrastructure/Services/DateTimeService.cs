@@ -1,10 +1,10 @@
 ﻿using Application.Interfaces;
 using EasyServiceRegister.Attributes;
 
-namespace Tech.CleanArchitecture.Infrastructure.Persistence.Services;
+namespace Infrastructure.Persistence.Services;
 
 [RegisterAsTransient]
-public class DateTimeService : IDateTime
+public class DateTimeService
 {
     public DateTime Now => DateTime.UtcNow;
 }

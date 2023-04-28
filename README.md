@@ -25,7 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var configuration = builder.Configuration;
 
-// In this case services from two differents assemblies are been registered into IoC 
+// In this case services from two differents assemblies are been registered into DI
 builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
 
 builder.Services.AddEndpointDefinitions(configuration);

@@ -34,8 +34,8 @@ jobs:
       uses: actions/setup-dotnet@v3
 
     # Create the NuGet package in the folder from the environment variable NuGetDirectory
-    - name: Restore NuGet packages
-      run: dotnet restore
+   #- name: Restore NuGet packages
+   #  run: dotnet restore
 
     - name: Build EasyServiceRegister
       run: dotnet build source/EasyServiceRegister/EasyServiceRegister.csproj --configuration Release
@@ -49,7 +49,7 @@ jobs:
         name: nuget
         if-no-files-found: error
         retention-days: 7
-        path: ${{ env.NuGetDirectory }}/*.nupkg
+        path: ${{ env.NuGetDirectory }}/EasyServiceRegister.nupkg
 
   validate_nuget:
     runs-on: ubuntu-latest

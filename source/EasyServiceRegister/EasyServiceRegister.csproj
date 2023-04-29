@@ -5,6 +5,11 @@
 		<ImplicitUsings>disable</ImplicitUsings>
 		<VersionPrefix>2.0.6</VersionPrefix>
 	</PropertyGroup>
+	 
+	 <PropertyGroup>
+		 <GenerateDocumentationFile>True</GenerateDocumentationFile>
+		 <NoWarn>$(NoWarn);CS1591</NoWarn>
+	</PropertyGroup>
 
 	<PropertyGroup>
 		<Authors>Juan Carlos Torres Cuervo</Authors>
@@ -12,6 +17,7 @@
 		<PackageProjectUrl>https://github.com/devjuanca/EasyServiceRegister</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/devjuanca/EasyServiceRegister</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>library, .net, DI</PackageTags>
 	</PropertyGroup>
 
 	<ItemGroup>

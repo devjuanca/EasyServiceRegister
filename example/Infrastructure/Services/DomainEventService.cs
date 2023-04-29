@@ -5,7 +5,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using EasyServiceRegister.Attributes;
 
-namespace Tech.CleanArchitecture.Infrastructure.Persistence.Services;
+namespace Infrastructure.Persistence.Services;
 
 [RegisterAsTransient]
 public class DomainEventService : IDomainEventService

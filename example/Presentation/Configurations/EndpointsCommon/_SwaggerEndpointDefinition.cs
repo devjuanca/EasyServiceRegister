@@ -15,7 +15,7 @@ public class SwaggerEndpointDefinition : IEndpointDefinition
         app.UseSwaggerUi3(settings =>
         {
             settings.DocExpansion = "list";
-            settings.DocumentTitle = "CleanArchitecture.Api Swagger";
+            settings.DocumentTitle = "Easy Service Register Example API Swagger";
             settings.Path = "/swagger";
         });
     }
@@ -26,7 +26,7 @@ public class SwaggerEndpointDefinition : IEndpointDefinition
 
         services.AddOpenApiDocument(configure =>
         {
-            configure.Title = "CleanArchitecture.Api";
+            configure.Title = "Easy Service Register Example API";
             configure.Version = "v1";
         });
 

@@ -1,13 +1,7 @@
-﻿using Application.Interfaces;
-using Infrastructure.Persistence;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http;
+﻿using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using EasyServiceRegister;
-using Tech.CleanArchitecture.Infrastructure.Persistence.Services;
 
 namespace Infrastructure;
 

@@ -9,9 +9,9 @@ var configuration = builder.Configuration;
 
 builder.AddServices();
 
+// Registering in DI container all services found in Presentation and Infrastructure assemblies.
+
 builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
-
-
 
 builder.Services.AddEndpointDefinitions(configuration);
 

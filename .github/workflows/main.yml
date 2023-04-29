@@ -49,7 +49,7 @@ jobs:
         name: nuget
         if-no-files-found: error
         retention-days: 7
-        path: ${{ env.NuGetDirectory }}/*.nupkg
+        path: ${{ env.NuGetDirectory }}/EasyServiceRegister/*.nupkg
 
   validate_nuget:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: nuget
-          path: ${{ env.NuGetDirectory}}
+          path: ${{ env.NuGetDirectory}}/EasyServiceRegister
 
       - name: Install nuget validator
         run: dotnet tool update Meziantou.Framework.NuGetPackageValidation.Tool --global
@@ -73,7 +73,7 @@ jobs:
       # If some rules are not applicable, you can disable them
       # using the --excluded-rules or --excluded-rule-ids option
       - name: Validate package
-        run: meziantou.validate-nuget-package (Get-ChildItem "${{ env.NuGetDirectory }}/*.nupkg") --excluded-rule-ids 32,111,74,72,61
+        run: meziantou.validate-nuget-package (Get-ChildItem "${{ env.NuGetDirectory }}/EasyServiceRegister/*.nupkg") --excluded-rule-ids 32,111,74,72,61
 
   run_test:
     runs-on: ubuntu-latest
@@ -108,5 +108,5 @@ jobs:
       - name: Publish NuGet package
       #  run: |
       # foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include EasyServiceRegister.nupkg)) {
-        run: dotnet nuget push ${{ env.NuGetDirectory }}/EasyServiceRegister.nupkg --api-key "${{ secrets.NUGET_APIKEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push ${{ env.NuGetDirectory }}/EasyServiceRegister/*.nupkg --api-key "${{ secrets.NUGET_APIKEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
       # }

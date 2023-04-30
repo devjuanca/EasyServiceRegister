@@ -1,54 +1,36 @@
-## Version 2.x.x of EasyServiceRegister has some breaking changes, code has been optimized and other cool stuff has been added!!
-1. Now you can register services by passing am array of market types to get the assemblies where services implementations are:
-      services.AddServices(params Type[] handlerAssemblyMarkerTypes);
-   or passing the assemblies directly.
-2. You can choose to register your services into DI by using Add or TryAdd: 
-   [RegisterAsSingleton(useTryAddSingleton: true)]
+## EasyServiceRegister 2.x.x - A easy service registration library
+
+EasyServiceRegister is a library that simplifies the process of registering services with the .NET Core Dependency Injection framework. With version 2.x.x, we have introduced breaking changes, optimized the code, and added new features.
    
 More Details below!!
 
 ### How to use it:
-1. First you will need to install the package in the project where your services implementations will be.
+1. Install the EasyServiceRegister package in your project:
 ```
 dotnet add package EasyServiceRegister --version 2.0.6 (.netstandard 2.0)
 ```
-2. Then in each service class you must add one of the following class attributes:
+2. Add the appropriate class attribute to your service class to indicate how it should be registered with DI:
 ```
 RegisterAsSingleton  --> It will register your service as Singleton.
 RegisterAsScoped    --> It will register your service as Scoped.
 RegisterAsTransient --> It will register your service as Transcient.
 ```
-note: Each attribute has a parameter indicating if your service must be registered using TryAdd or just Add, by default this property will be false. 
+Note: You can use an optional parameter (useTryAddSingleton,useTryAddScopped or useTryAddTranscient) with the attribute to indicate whether to use TryAdd or Add when registering the service with DI.
 
-3. Finally you must register your services using the following extension method
+3. Register your services by calling the AddServices extension method on the IServiceCollection instance in your Startup.cs or Program.cs file:
 ```
 services.AddServices(params Type[] handlerAssemblyMarkerTypes);
+
+//Example:
+services.AddServices(typeof(AssemblyContainingService), typeof(AnotherAssemblyContainingService));
 ```
-Each handlerAssemblyMarkerTypes must be a type from the assembly where your services are.
+This method takes an array of marker types that indicate which assemblies to scan for service implementations.
 
-Here is an example of a service implementation:
-```
-var builder = WebApplication.CreateBuilder(args);
+In case your service class implements an interface to abstract itself, the interface must be the last interface implemented.
 
-var configuration = builder.Configuration;
+##Example
 
-// In this case services from two differents assemblies are been registered into DI
-builder.Services.AddServices(typeof(DependencyInjection), typeof(Program));
-
-builder.Services.AddEndpointDefinitions(configuration);
-
-var app = builder.Build();
-
-app.ConfigurePipeline();
-
-app.UseEndpointDefinitions();
-
-await app.ApplySeeder();
-
-await app.RunAsync();
-```
-
-
+Here is an example of a service implementation that registers itself as a scoped service:
 
 ```
 [RegisterAsScoped]
@@ -64,6 +46,8 @@ public class ProductCommandServices : IProductCommandServices
     }
 }
 ```
+And here is an example of a service that registers itself as a singleton service using 'TryAddSingleton'
+
 ```
 [RegisterAsSingleton(useTryAddSingleton: true)]
 public class GetCurrentUser
@@ -75,14 +59,4 @@ public class GetCurrentUser
 }
 ```
 
-Consider the following:
-In case your service implement an interface to abstract itself, that interface must be the last you implement.
-  Ex.
-```
-[RegisterAsScoped]
- public class ProductCommandServices : ISomeOtherInterface, IProductCommandServices
-{
- ...
-}
-```
-And that's it!! No more loaded Startup classes or huge extension methods registering services in your code. :)
+With EasyServiceRegister, you can simplify your code by eliminating the need for huge extension methods and a cluttered Startup class.

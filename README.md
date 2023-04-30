@@ -1,4 +1,11 @@
-## Version 2.0.0 of EasyServiceRegister has some break changes, code has been optimized and other cool stuff has been added!!
+## Version 2.x.x of EasyServiceRegister has some breaking changes, code has been optimized and other cool stuff has been added!!
+1. Now you can register services by passing am array of market types to get the assemblies where services implementations are:
+      services.AddServices(params Type[] handlerAssemblyMarkerTypes);
+   or passing the assemblies directly.
+2. You can choose to register your services into DI by using Add or TryAdd: 
+   [RegisterAsSingleton(useTryAddSingleton: true)]
+   
+More Details below!!
 
 ### How to use it:
 1. First you will need to install the package in the project where your services implementations will be.

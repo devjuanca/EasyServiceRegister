@@ -103,7 +103,12 @@ namespace EasyServiceRegister
                 return;
             }
 
-            Type abstractionType = typeInfo.ImplementedInterfaces.Last();
+            Type abstractionType = typeInfo.ImplementedInterfaces.LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
+
+            if (abstractionType == null)
+            {
+                throw new Exception($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+            }
 
             switch (useTryAdd)
             {

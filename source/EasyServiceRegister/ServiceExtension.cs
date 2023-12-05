@@ -18,24 +18,41 @@ namespace EasyServiceRegister
         /// <returns></returns>
         public static IServiceCollection AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
         {
-            foreach (var markerType in handlerAssemblyMarkerTypes)
+            try
             {
-                Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
+                foreach (var markerType in handlerAssemblyMarkerTypes)
+                {
+                    Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
 
-                RegisterSingletonServices(services, assembly);
-                RegisterScopedServices(services, assembly);
-                RegisterTransientServices(services, assembly);
+                    RegisterSingletonServices(services, assembly);
+                    RegisterScopedServices(services, assembly);
+                    RegisterTransientServices(services, assembly);
+                }
+
+                return services;
             }
-
-            return services;
+            catch
+            {
+                throw;
+            }
         }
-
 
         public static IServiceCollection AddServices(this IServiceCollection services, params Assembly[] assemblies)
         {
-            return services.AddServices(assemblies.SelectMany(a => a.GetExportedTypes())
-                                                  .Where(t => t.IsClass && !t.IsAbstract && !t.IsGenericTypeDefinition)
-                                                  .ToArray());
+            try
+            {
+                foreach (var assembly in assemblies)
+                {
+                    RegisterSingletonServices(services, assembly);
+                    RegisterScopedServices(services, assembly);
+                    RegisterTransientServices(services, assembly);
+                }
+                return services;
+            }
+            catch
+            {
+                throw;
+            }
         }
 
 
@@ -82,11 +99,12 @@ namespace EasyServiceRegister
 
             if (!typeInfo.ImplementedInterfaces.Any())
             {
-                services.Add(new ServiceDescriptor(implementationType, implementationType, lifetime));
+                services.Add(new ServiceDescriptor(implementationType, lifetime));
                 return;
             }
 
             Type abstractionType = typeInfo.ImplementedInterfaces.Last();
+
             switch (useTryAdd)
             {
                 case true:

@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<ImplicitUsings>disable</ImplicitUsings>
-		<VersionPrefix>2.0.8</VersionPrefix>
+		<VersionPrefix>2.0.9</VersionPrefix>
 	</PropertyGroup>
 
 	<PropertyGroup>

@@ -99,7 +99,7 @@ namespace EasyServiceRegister
 
             if (!typeInfo.ImplementedInterfaces.Any())
             {
-                services.Add(new ServiceDescriptor(implementationType, lifetime));
+                services.Add(new ServiceDescriptor(implementationType, implementationType, lifetime: lifetime));
                 return;
             }
 

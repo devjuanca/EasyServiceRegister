@@ -1,4 +1,4 @@
-## EasyServiceRegister 2.x.x - A easy service registration library
+## EasyServiceRegister - A easy service registration library
 
 EasyServiceRegister is a library that simplifies the process of registering services with the .NET Core Dependency Injection framework. With version 2.x.x, we have introduced breaking changes, optimized the code, and added new features.
    
@@ -7,7 +7,7 @@ More Details below!!
 ### How to use it:
 1. Install the EasyServiceRegister package in your project:
 ```
-dotnet add package EasyServiceRegister --version 2.0.6 (.netstandard 2.0)
+dotnet add package EasyServiceRegister
 ```
 2. Add the appropriate class attribute to your service class to indicate how it should be registered with DI:
 ```

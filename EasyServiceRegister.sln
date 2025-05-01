@@ -9,6 +9,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EasyServiceRegister", "Easy
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyServiceRegister", "source\EasyServiceRegister\EasyServiceRegister.csproj", "{DD8DBFD5-0A3F-4FBB-A799-AF7FF3E0BF31}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{D4D0BF1E-5BA2-40D6-90F6-8B0B4251D017}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\main.yml = .github\workflows\main.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +33,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{BFA3B029-4DC1-4D2C-8F0B-9541A66CB3BE} = {AECC34A7-60A3-4078-A64C-47F974274D24}
 		{DD8DBFD5-0A3F-4FBB-A799-AF7FF3E0BF31} = {BFA3B029-4DC1-4D2C-8F0B-9541A66CB3BE}
+		{D4D0BF1E-5BA2-40D6-90F6-8B0B4251D017} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4F245CDA-9A0E-4946-89FF-8FF247128D77}

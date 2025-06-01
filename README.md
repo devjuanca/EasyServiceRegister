@@ -12,8 +12,12 @@ dotnet add package EasyServiceRegister
 2. Add the appropriate class attribute to your service class to indicate how it should be registered with DI:
 ```
 RegisterAsSingleton  --> It will register your service as Singleton.
+RegisterAsSingletonKeyed --> It will register your service as Singleton with a key.
 RegisterAsScoped    --> It will register your service as Scoped.
-RegisterAsTransient --> It will register your service as Transcient.
+RegisterAsScopedKeyed --> It will register your service as Scoped with a key.
+RegisterAsTransient --> It will register your service as Transient.
+RegisterAsTransientKeyed --> It will register your service as Transient with a key.
+
 ```
 Note: You can use an optional parameter (useTryAddSingleton,useTryAddScopped or useTryAddTranscient) with the attribute to indicate whether to use TryAdd or Add when registering the service with DI.
 
@@ -28,7 +32,7 @@ This method takes an array of marker types that indicate which assemblies to sca
 
 In case your service class implements an interface to abstract itself, the interface must be the last interface implemented.
 
-##Example
+Example:
 
 Here is an example of a service implementation that registers itself as a scoped service:
 
@@ -36,13 +40,9 @@ Here is an example of a service implementation that registers itself as a scoped
 [RegisterAsScoped]
 public class ProductCommandServices : IProductCommandServices
 {
-    private readonly IApplicationDbContext _context;
-    private readonly IMapper _mapper;
-
-    public ProductCommandServices(IApplicationDbContext context, IMapper mapper)
+    public Task<Product> CreateProduct(Product product)
     {
-        _context = context;
-        _mapper = mapper;
+        // Implementation for creating a product
     }
 }
 ```
@@ -54,7 +54,7 @@ public class GetCurrentUser
 {
   public Task<User> GetCurrentUser()
    {
-     ...
+     // Implementation for getting the current user
    }
 }
 ```

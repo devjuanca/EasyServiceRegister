@@ -4,7 +4,7 @@ namespace EasyServiceRegister.Attributes
 {
 
     /// <summary>
-    /// Mark a service class to be registered in IoC as Transient.
+    /// Marks a class to be registered as a transient service with a specific key.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class RegisterAsTransientAttribute : Attribute

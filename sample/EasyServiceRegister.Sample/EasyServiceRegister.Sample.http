@@ -1,0 +1,28 @@
+@EasyServiceRegister.Sample_HostAddress = http://localhost:5199
+
+GET {{EasyServiceRegister.Sample_HostAddress}}/scoped-interface
+Accept: application/json
+
+###
+
+
+GET {{EasyServiceRegister.Sample_HostAddress}}/scoped-service
+Accept: application/json
+
+###
+
+GET {{EasyServiceRegister.Sample_HostAddress}}/keyed-scoped-service
+Accept: application/json
+
+###
+
+GET {{EasyServiceRegister.Sample_HostAddress}}/singleton-service
+Accept: application/json
+
+###
+
+GET {{EasyServiceRegister.Sample_HostAddress}}/transient-service
+Accept: application/json
+
+###
+

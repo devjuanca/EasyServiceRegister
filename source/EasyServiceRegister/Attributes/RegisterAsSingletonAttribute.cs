@@ -5,13 +5,13 @@ namespace EasyServiceRegister.Attributes
 {
 
     /// <summary>
-    /// Mark a service class to be registered in IoC as Singleton.
+    /// Marks a class to be registered as a singleton service.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class RegisterAsSingletonAttribute : Attribute
     {
         /// <summary>
-        /// Defines how to register the service by using TryAddSingleton or AddSingleton, default value is false.
+        /// Indicates whether to use TryAddSingleton instead of AddSingleton for registration.
         /// </summary>
         internal bool UseTryAddSingleton { get; set; }
         public RegisterAsSingletonAttribute(bool useTryAddSingleton = false)

@@ -16,6 +16,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\main.yml = .github\workflows\main.yml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{1A6B0FC7-0FB5-4B40-A31B-353D327C7BC9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyServiceRegister.Sample", "sample\EasyServiceRegister.Sample\EasyServiceRegister.Sample.csproj", "{838D8FB6-3238-430C-AF28-F137F313A13B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +30,10 @@ Global
 		{DD8DBFD5-0A3F-4FBB-A799-AF7FF3E0BF31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD8DBFD5-0A3F-4FBB-A799-AF7FF3E0BF31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD8DBFD5-0A3F-4FBB-A799-AF7FF3E0BF31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{838D8FB6-3238-430C-AF28-F137F313A13B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{838D8FB6-3238-430C-AF28-F137F313A13B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{838D8FB6-3238-430C-AF28-F137F313A13B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{838D8FB6-3238-430C-AF28-F137F313A13B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -34,6 +42,7 @@ Global
 		{BFA3B029-4DC1-4D2C-8F0B-9541A66CB3BE} = {AECC34A7-60A3-4078-A64C-47F974274D24}
 		{DD8DBFD5-0A3F-4FBB-A799-AF7FF3E0BF31} = {BFA3B029-4DC1-4D2C-8F0B-9541A66CB3BE}
 		{D4D0BF1E-5BA2-40D6-90F6-8B0B4251D017} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{838D8FB6-3238-430C-AF28-F137F313A13B} = {1A6B0FC7-0FB5-4B40-A31B-353D327C7BC9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4F245CDA-9A0E-4946-89FF-8FF247128D77}

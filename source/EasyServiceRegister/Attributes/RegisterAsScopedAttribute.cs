@@ -4,13 +4,13 @@ namespace EasyServiceRegister.Attributes
 
 {
     /// <summary>
-    /// Mark a service class to be registered in IoC as Scoped.
+    /// Marks a class to be registered as a scoped service.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class RegisterAsScopedAttribute : Attribute
     {
         /// <summary>
-        /// Defines how to register the service by using TryAddScoped or AddScoped, default value is false.
+        /// Indicates whether to use TryAddScoped instead of AddScoped for registration. 
         /// </summary>
         internal bool UseTryAddScoped { get; set; }
 

@@ -29,13 +29,18 @@ public interface IScopedSampleService
     string GetId();
 }
 
-[RegisterAsScoped]
-public class ScopedSampleServiceImpl : IScopedSampleService
+[RegisterAsScoped(serviceInterface: typeof(IScopedSampleService))]
+public class ScopedSampleServiceImpl : IScopedSampleService, IDisposable
 {
     private Guid Id { get; } = Guid.NewGuid();
 
     public string GetId()
     {
         return $"Get Id from ScopedSampleServiceImpl: {Id}";
+    }
+
+    public void Dispose()
+    {
+        return;
     }
 }

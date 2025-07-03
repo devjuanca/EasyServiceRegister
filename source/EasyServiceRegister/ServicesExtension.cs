@@ -1,15 +1,46 @@
 ﻿using EasyServiceRegister.Attributes;
+using EasyServiceRegister.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
 namespace EasyServiceRegister
 {
-
     public static class ServicesExtension
     {
+        private static readonly List<ServiceRegistrationInfo> _registrationLog = new List<ServiceRegistrationInfo>();
+
+        /// <summary>
+        /// Gets information about all services registered through EasyServiceRegister
+        /// </summary>
+        /// <returns>A collection of service registration information</returns>
+        public static IEnumerable<ServiceRegistrationInfo> GetRegisteredServices()
+        {
+            return _registrationLog.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Gets information about registered services filtered by type or lifetime
+        /// </summary>
+        /// <param name="serviceType">Optional service type to filter by</param>
+        /// <param name="lifetime">Optional lifetime to filter by</param>
+        /// <returns>Filtered collection of service registration information</returns>
+        public static IEnumerable<ServiceRegistrationInfo> GetRegisteredServices(Type serviceType = null, ServiceLifetime? lifetime = null)
+        {
+            var result = _registrationLog.AsEnumerable();
+
+            if (serviceType != null)
+                result = result.Where(r => r.ServiceType == serviceType);
+
+            if (lifetime.HasValue)
+                result = result.Where(r => r.Lifetime == lifetime.Value);
+
+            return result;
+        }
+
         /// <summary>
         /// Scans the assemblies containing the specified marker types and registers services
         /// based on custom attributes such as RegisterAsSingleton, RegisterAsScoped, RegisterAsTransient,
@@ -86,8 +117,9 @@ namespace EasyServiceRegister
             foreach (var implementationType in singletonServicesToRegister)
             {
                 var typeInfo = implementationType.GetTypeInfo();
-                var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>()?.UseTryAddSingleton ?? true;
-                RegisterService(services, implementationType, registerBehaviour, ServiceLifetime.Singleton);
+                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>()?.UseTryAddSingleton ?? true;
+                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>()?.ServiceInterface;
+                RegisterService(services, serviceInterface, implementationType, registerBehavior, ServiceLifetime.Singleton);
             }
         }
 
@@ -98,8 +130,9 @@ namespace EasyServiceRegister
             foreach (var implementationType in scopedServicesToRegister)
             {
                 var typeInfo = implementationType.GetTypeInfo();
-                var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>()?.UseTryAddScoped ?? true;
-                RegisterService(services, implementationType, registerBehaviour, ServiceLifetime.Scoped);
+                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>()?.UseTryAddScoped ?? true;
+                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>()?.ServiceInterface;
+                RegisterService(services, serviceInterface, implementationType, registerBehavior, ServiceLifetime.Scoped);
             }
         }
 
@@ -110,8 +143,9 @@ namespace EasyServiceRegister
             foreach (var implementationType in transientServicesToRegister)
             {
                 var typeInfo = implementationType.GetTypeInfo();
-                var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>()?.UseTryAddTransient ?? false;
-                RegisterService(services, implementationType, registerBehaviour, ServiceLifetime.Transient);
+                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>()?.UseTryAddTransient ?? false;
+                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>()?.ServiceInterface;
+                RegisterService(services, serviceInterface, implementationType, registerBehavior, ServiceLifetime.Transient);
             }
         }
 
@@ -122,9 +156,10 @@ namespace EasyServiceRegister
             foreach (var implementationType in scopedServicesToRegister)
             {
                 var typeInfo = implementationType.GetTypeInfo();
-                var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>()?.UseTryAddScoped ?? false;
+                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>()?.UseTryAddScoped ?? false;
                 var key = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>().Key;
-                RegisterKeyedService(services, implementationType, registerBehaviour, key, ServiceLifetime.Scoped);
+                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>()?.ServiceInterface;
+                RegisterKeyedService(services, serviceInterface, implementationType, registerBehavior, key, ServiceLifetime.Scoped);
             }
         }
 
@@ -135,9 +170,10 @@ namespace EasyServiceRegister
             foreach (var implementationType in singletonServicesToRegister)
             {
                 var typeInfo = implementationType.GetTypeInfo();
-                var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>()?.UseTryAddSingleton ?? true;
+                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>()?.UseTryAddSingleton ?? true;
                 var key = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>().Key;
-                RegisterKeyedService(services, implementationType, registerBehaviour, key, ServiceLifetime.Singleton);
+                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>()?.ServiceInterface;
+                RegisterKeyedService(services, serviceInterface, implementationType, registerBehavior, key, ServiceLifetime.Singleton);
             }
         }
 
@@ -148,13 +184,14 @@ namespace EasyServiceRegister
             foreach (var implementationType in transientServicesToRegister)
             {
                 var typeInfo = implementationType.GetTypeInfo();
-                var registerBehaviour = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>()?.UseTryAddTransient ?? false;
+                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>()?.UseTryAddTransient ?? false;
                 var key = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>().Key;
-                RegisterKeyedService(services, implementationType, registerBehaviour, key, ServiceLifetime.Transient);
+                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>()?.ServiceInterface;
+                RegisterKeyedService(services, serviceInterface, implementationType, registerBehavior, key, ServiceLifetime.Transient);
             }
         }
 
-        private static void RegisterService(IServiceCollection services, Type implementationType, bool useTryAdd, ServiceLifetime lifetime)
+        private static void RegisterService(IServiceCollection services, Type abstractionType, Type implementationType, bool useTryAdd, ServiceLifetime lifetime)
         {
             var typeInfo = implementationType.GetTypeInfo();
 
@@ -168,10 +205,25 @@ namespace EasyServiceRegister
                 {
                     services.Add(new ServiceDescriptor(implementationType, implementationType, lifetime: lifetime));
                 }
+
+                _registrationLog.Add(new ServiceRegistrationInfo
+                {
+                    ServiceType = implementationType,
+                    ImplementationType = implementationType,
+                    Lifetime = lifetime,
+                    RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                    AttributeUsed = GetAttributeNameForLifetime(lifetime)
+                });
+
                 return;
             }
 
-            Type abstractionType = typeInfo.ImplementedInterfaces.LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
+            abstractionType ??= typeInfo.ImplementedInterfaces.LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
+
+            if (abstractionType != null && !typeInfo.ImplementedInterfaces.Contains(abstractionType))
+            {
+                throw new Exception($"The type {implementationType.FullName} does not implement the abstraction type {abstractionType.FullName}.");
+            }
 
             if (abstractionType == null)
             {
@@ -187,9 +239,18 @@ namespace EasyServiceRegister
                     services.Add(new ServiceDescriptor(abstractionType, implementationType, lifetime));
                     break;
             }
+
+            _registrationLog.Add(new ServiceRegistrationInfo
+            {
+                ServiceType = abstractionType,
+                ImplementationType = implementationType,
+                Lifetime = lifetime,
+                RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                AttributeUsed = GetAttributeNameForLifetime(lifetime)
+            });
         }
 
-        private static void RegisterKeyedService(IServiceCollection services, Type implementationType, bool useTryAdd, string key, ServiceLifetime lifetime)
+        private static void RegisterKeyedService(IServiceCollection services, Type abstractionType, Type implementationType, bool useTryAdd, string key, ServiceLifetime lifetime)
         {
 #if NET8_0_OR_GREATER
             var typeInfo = implementationType.GetTypeInfo();
@@ -205,10 +266,20 @@ namespace EasyServiceRegister
                     services.Add(new ServiceDescriptor(implementationType, serviceKey: key, implementationType, lifetime: lifetime));
                 }
 
+                _registrationLog.Add(new ServiceRegistrationInfo
+                {
+                    ServiceType = implementationType,
+                    ImplementationType = implementationType,
+                    Lifetime = lifetime,
+                    ServiceKey = key,
+                    RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                    AttributeUsed = GetAttributeNameForLifetime(lifetime, isKeyed: true)
+                });
+
                 return;
             }
 
-            Type abstractionType = typeInfo.ImplementedInterfaces.LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
+            abstractionType ??= typeInfo.ImplementedInterfaces.LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
 
             if (abstractionType == null)
             {
@@ -224,7 +295,31 @@ namespace EasyServiceRegister
                     services.Add(new ServiceDescriptor(abstractionType, serviceKey: key, implementationType, lifetime));
                     break;
             }
+
+            _registrationLog.Add(new ServiceRegistrationInfo
+            {
+                ServiceType = abstractionType,
+                ImplementationType = implementationType,
+                Lifetime = lifetime,
+                ServiceKey = key,
+                RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                AttributeUsed = GetAttributeNameForLifetime(lifetime, isKeyed: true)
+            });
 #endif
+        }
+
+        private static string GetAttributeNameForLifetime(ServiceLifetime lifetime, bool isKeyed = false)
+        {
+            return (lifetime, isKeyed) switch
+            {
+                (ServiceLifetime.Singleton, false) => "RegisterAsSingleton",
+                (ServiceLifetime.Singleton, true) => "RegisterAsSingletonKeyed",
+                (ServiceLifetime.Scoped, false) => "RegisterAsScoped",
+                (ServiceLifetime.Scoped, true) => "RegisterAsScopedKeyed",
+                (ServiceLifetime.Transient, false) => "RegisterAsTransient",
+                (ServiceLifetime.Transient, true) => "RegisterAsTransientKeyed",
+                _ => "Unknown"
+            };
         }
     }
 }

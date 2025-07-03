@@ -14,8 +14,14 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal bool UseTryAddScoped { get; set; }
 
-        public RegisterAsScopedAttribute(bool useTryAddScoped = false)
+        /// <summary>
+        /// Indicates the service interface type to register the class as.
+        /// </summary>
+        internal Type ServiceInterface { get; set; }
+
+        public RegisterAsScopedAttribute(Type serviceInterface = null, bool useTryAddScoped = false)
         {
+            ServiceInterface = serviceInterface;
             UseTryAddScoped = useTryAddScoped;
         }
     }

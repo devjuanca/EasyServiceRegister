@@ -18,9 +18,15 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal bool UseTryAddSingleton { get; set; }
 
-        public RegisterAsSingletonKeyedAttribute(string key, bool useTryAdd = false)
+        /// <summary>
+        /// Indicates the service interface type to register the class as.
+        /// </summary>
+        internal Type ServiceInterface { get; set; }
+
+        public RegisterAsSingletonKeyedAttribute(string key, Type serviceInterface = null, bool useTryAdd = false)
         {
             Key = key;
+            ServiceInterface = serviceInterface;
             UseTryAddSingleton = useTryAdd;
         }
     }

@@ -143,11 +143,11 @@ public class LoggingNotificationDecorator : INotificationService
 Get insights into your service registrations:
 
 ```
-var diagnostics = services.GetRegistrationDiagnostics();
+var registeredServices = ServicesExtension.GetRegisteredServices();;
 
-foreach (var info in diagnostics) 
+foreach (var info in registeredServices) 
 { 
-  Console.WriteLine($"Service: {info.ServiceType}, Implementation: {info.ImplementationType}, Lifetime: {info.Lifetime}"); 
+  Console.WriteLine($"Service Type: {service.ServiceType}, Implementation Type: {service.ImplementationType}, Lifetime: {service.Lifetime}, Key: {service.ServiceKey}, Registration Method: {service.RegistrationMethod}, Attribute Used: {service.AttributeUsed}");
 }
 ```
 

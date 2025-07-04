@@ -13,8 +13,15 @@ namespace EasyServiceRegister.Attributes
         /// Defines how to register the service by using TryAddTransient or AddTransient, default value is false.
         /// </summary>
         internal bool UseTryAddTransient { get; set; }
-        public RegisterAsTransientAttribute(bool useTryAddTransient = false)
+
+        /// <summary>
+        /// Indicates the service interface type to register the class as.
+        /// </summary>
+        internal Type ServiceInterface { get; set; }
+
+        public RegisterAsTransientAttribute(Type serviceInterface = null, bool useTryAddTransient = false)
         {
+            ServiceInterface = serviceInterface;
             UseTryAddTransient = useTryAddTransient;
         }
     }

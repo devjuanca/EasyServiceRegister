@@ -5,6 +5,7 @@ VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "source", "source", "{AECC34A7-60A3-4078-A64C-47F974274D24}"
 	ProjectSection(SolutionItems) = preProject
+		icon.png = icon.png
 		LICENSE.txt = LICENSE.txt
 		README.md = README.md
 	EndProjectSection

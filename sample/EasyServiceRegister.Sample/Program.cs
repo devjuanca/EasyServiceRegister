@@ -1,11 +1,42 @@
 using EasyServiceRegister;
 using EasyServiceRegister.Sample.Services;
+using EasyServiceRegister.Sample.Services.DecoratorSample;
+using EasyServiceRegister.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddScoped<DefaultWeatherService>();
+
+//builder.Services.AddScoped<IWeatherService>(sp =>
+//{
+//    var baseService = sp.GetRequiredService<DefaultWeatherService>();
+
+//    var withCaching = new CachingWeatherDecorator(baseService, sp.GetRequiredService<IMemoryCache>());
+
+//    var withLogging = new LoggingWeatherDecorator(withCaching, sp.GetRequiredService<ILogger<LoggingWeatherDecorator>>());
+
+//    return withLogging;
+//});
+
+builder.Services.AddMemoryCache();
+
 builder.Services.AddServices(typeof(Program));
 
+var validationIssues = builder.Services.ValidateServices();
+
+foreach (var issue in validationIssues)
+{
+    Console.WriteLine(issue);
+}
+
 var app = builder.Build();
+
+var registeredServices = ServicesExtension.GetRegisteredServices();
+
+foreach (var service in registeredServices)
+{
+    Console.WriteLine($"Service Type: {service.ServiceType}, Implementation Type: {service.ImplementationType}, Lifetime: {service.Lifetime}, Key: {service.ServiceKey}, Registration Method: {service.RegistrationMethod}, Attribute Used: {service.AttributeUsed}");
+}
 
 app.UseHttpsRedirection();
 
@@ -18,5 +49,10 @@ app.MapGet("/keyed-scoped-service", ([FromKeyedServices("KeyedScopedSampleServic
 app.MapGet("/singleton-service", (SingletonSampleService singletonSampleService) => singletonSampleService.GetId());
 
 app.MapGet("/transient-service", (TransientSampleService transientSampleService) => transientSampleService.GetId());
+
+app.MapGet("/weather-forecast", (IWeatherService weatherService) =>
+{
+    return weatherService.GetForecastAsync(5);
+});
 
 app.Run();

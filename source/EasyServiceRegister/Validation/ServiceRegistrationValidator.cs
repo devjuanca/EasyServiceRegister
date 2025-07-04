@@ -167,7 +167,7 @@ namespace EasyServiceRegister.Validation
 
             foreach (var cycle in cycles)
             {
-                var message = "Dependency cycle detected: " + string.Join(" → ", cycle.Select(t => services.FirstOrDefault(s => s.ServiceType == t)?.ImplementationType != null &&
+                var message = "Dependency cycle detected: " + string.Join(" -> ", cycle.Select(t => services.FirstOrDefault(s => s.ServiceType == t)?.ImplementationType != null &&
                          services.FirstOrDefault(s => s.ServiceType == t)?.ImplementationType != t
                    ? $"{t.Name} ({services.FirstOrDefault(s => s.ServiceType == t)?.ImplementationType.Name})"
                    : t.Name));
@@ -277,13 +277,16 @@ namespace EasyServiceRegister.Validation
         private static IEnumerable<Type> GetMissingDependencies(Type implementationType, IServiceCollection services)
         {
             var constructors = implementationType.GetConstructors();
-            if (!constructors.Any())
+            if (constructors.Length == 0)
+            {
                 return Enumerable.Empty<Type>();
+            }
 
             // Get the constructor with the most parameters (assumed to be the primary constructor)
             var primaryConstructor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
 
             var missingDependencies = new List<Type>();
+
             foreach (var parameter in primaryConstructor.GetParameters())
             {
                 var parameterType = parameter.ParameterType;
@@ -344,9 +347,11 @@ namespace EasyServiceRegister.Validation
 
                 var implementationType = descriptor.ImplementationType;
 
-                if (!graph.ContainsKey(implementationType))
+                if (!graph.TryGetValue(implementationType, out var dependencies))
                 {
-                    graph[implementationType] = new List<Type>();
+                    dependencies = new List<Type>();
+
+                    graph[implementationType] = dependencies;
                 }
 
                 var constructor = implementationType.GetConstructors()
@@ -360,11 +365,11 @@ namespace EasyServiceRegister.Validation
                 {
                     var dependencyType = param.ParameterType;
 
-                    // Ignorar tipos framework o opcionales
+                    // Ignore framework types or optional types
                     if (IsFrameworkType(dependencyType) || IsOptionalService(dependencyType))
                         continue;
 
-                    graph[implementationType].Add(dependencyType);
+                    dependencies.Add(dependencyType);
                 }
             }
 
@@ -374,26 +379,35 @@ namespace EasyServiceRegister.Validation
         private static List<List<Type>> DetectCycles(Dictionary<Type, List<Type>> graph)
         {
             var visited = new HashSet<Type>();
+
             var stack = new HashSet<Type>();
+
             var path = new Stack<Type>();
+
             var cycles = new List<List<Type>>();
 
             void Visit(Type node)
             {
                 if (stack.Contains(node))
                 {
-                    // Ciclo detectado → capturamos el path hasta el nodo
                     var cycle = path.Reverse().SkipWhile(n => n != node).ToList();
-                    cycle.Add(node); // cerrar el ciclo
+
+                    cycle.Add(node);
+
                     cycles.Add(cycle);
+
                     return;
                 }
 
                 if (visited.Contains(node))
+                {
                     return;
+                }
 
                 visited.Add(node);
+
                 stack.Add(node);
+
                 path.Push(node);
 
                 if (graph.TryGetValue(node, out var neighbors))
@@ -405,6 +419,7 @@ namespace EasyServiceRegister.Validation
                 }
 
                 path.Pop();
+
                 stack.Remove(node);
             }
 

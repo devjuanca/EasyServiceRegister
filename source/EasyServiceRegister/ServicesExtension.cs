@@ -66,6 +66,7 @@ namespace EasyServiceRegister
                     RegisterKeyedSingletonService(services, assembly);
                     RegisterKeyedTransientService(services, assembly);
 #endif
+                    ApplyDecorators(services, assembly);
                 }
 
                 return services;
@@ -101,6 +102,7 @@ namespace EasyServiceRegister
                     RegisterKeyedSingletonService(services, assembly);
                     RegisterKeyedTransientService(services, assembly);
 #endif
+                    ApplyDecorators(services, assembly);
                 }
                 return services;
             }
@@ -320,6 +322,37 @@ namespace EasyServiceRegister
                 (ServiceLifetime.Transient, true) => "RegisterAsTransientKeyed",
                 _ => "Unknown"
             };
+        }
+
+        private static void ApplyDecorators(IServiceCollection services, Assembly assembly)
+        {
+            foreach (var implementationType in assembly.DefinedTypes.Where(t => t.GetCustomAttributes<DecorateWithAttribute>().Any()))
+            {
+                // Get decorators and service registrations.
+                var decoratorAttributes = implementationType.GetCustomAttributes<DecorateWithAttribute>()
+                    .OrderByDescending(attr => attr.Order);
+
+                foreach (var registration in _registrationLog.Where(r => r.ImplementationType == implementationType))
+                {
+                    if (registration.ServiceType == implementationType)
+                    {
+                        continue;
+                    }
+
+                    foreach (var attr in decoratorAttributes)
+                    {
+                        if (!registration.ServiceType.IsAssignableFrom(attr.DecoratorType))
+                        {
+                            throw new Exception($"Decorator type {attr.DecoratorType.FullName} does not implement service interface {registration.ServiceType.FullName}");
+                        }
+
+                        // Add decorator info and apply it
+                        registration.Decorators.Add(new DecoratorInfo { DecoratorType = attr.DecoratorType, Order = attr.Order });
+
+                        services.AddDecorator(registration.ServiceType, attr.DecoratorType);
+                    }
+                }
+            }
         }
     }
 }

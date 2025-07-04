@@ -26,3 +26,6 @@ Accept: application/json
 
 ###
 
+
+GET {{EasyServiceRegister.Sample_HostAddress}}/weather-forecast
+Accept: application/json

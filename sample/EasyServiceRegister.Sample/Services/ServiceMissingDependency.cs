@@ -1,4 +1,6 @@
-﻿namespace EasyServiceRegister.Sample.Services;
+﻿//using EasyServiceRegister.Attributes;
+
+//namespace EasyServiceRegister.Sample.Services;
 
 //[RegisterAsSingleton]
 //public class ServiceMissingDependency

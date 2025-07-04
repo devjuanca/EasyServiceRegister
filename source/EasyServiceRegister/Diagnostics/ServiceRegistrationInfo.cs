@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 
 namespace EasyServiceRegister.Diagnostics
 {
@@ -37,5 +38,10 @@ namespace EasyServiceRegister.Diagnostics
         /// The attribute used for registration
         /// </summary>
         public string AttributeUsed { get; set; }
+
+        /// <summary>
+        /// The decorators applied to the service
+        /// </summary>
+        public List<DecoratorInfo> Decorators { get; set; } = new List<DecoratorInfo>();
     }
 }

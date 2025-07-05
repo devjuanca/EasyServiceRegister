@@ -1,169 +1,219 @@
-## EasyServiceRegister - A easy service registration library
+﻿# EasyServiceRegister
 
-EasyServiceRegister is a library that simplifies the process of registering services with the .NET Core Dependency Injection framework. With version 3.0.0, we have introduced optimizations and powerful new features.
-   
-More Details below!!
+**Simple, Attribute-Based Dependency Injection for .NET**
 
-### How to use it:
-1. Install the EasyServiceRegister package in your project:
+EasyServiceRegister is a lightweight library built on top of `Microsoft.Extensions.DependencyInjection.Abstractions`. It simplifies the registration of services using attributes, supporting lifetimes, keyed services, decorators, and validation — all with minimal boilerplate.
+
+> ✅ Now supporting **keyed services** (.NET 8+) and **registration diagnostics** in **v3.0.0+**
+
+---
+
+## 🚀 Installation
+
+Install via NuGet:
 
 ```bash
-  dotnet add package EasyServiceRegister
-  ```
-
-2. Add the appropriate class attribute to your service class to indicate how it should be registered with DI:
-
-```
-RegisterAsSingleton  --> It will register your service as Singleton. 
-RegisterAsSingletonKeyed --> It will register your service as Singleton with a key. 
-RegisterAsScoped    --> It will register your service as Scoped. 
-RegisterAsScopedKeyed --> It will register your service as Scoped with a key. 
-RegisterAsTransient --> It will register your service as Transient. 
-RegisterAsTransientKeyed --> It will register your service as Transient with a key.
+dotnet add package EasyServiceRegister
 ```
 
-Note: You can use an optional parameter (useTryAddSingleton,useTryAddScopped or useTryAddTranscient) with the attribute to indicate whether to use TryAdd or Add when registering the service with DI.
+---
 
-3. Register your services by calling the AddServices extension method on the IServiceCollection instance in your Startup.cs or Program.cs file:
+## ⚙️ How It Works
 
-```
-services.AddServices(params Type[] handlerAssemblyMarkerTypes);
+### 1. Add a registration attribute to your service class:
 
-//Example: services.AddServices(typeof(AssemblyContainingService), typeof(AnotherAssemblyContainingService));
-```
+| Attribute | Description |
+|----------|-------------|
+| `[RegisterAsSingleton]` | Registers as a singleton |
+| `[RegisterAsScoped]` | Registers as scoped |
+| `[RegisterAsTransient]` | Registers as transient |
+| `[RegisterAsSingletonKeyed("key")]` | Singleton with a key (requires .NET 8+) |
+| `[RegisterAsScopedKeyed("key")]` | Scoped with a key |
+| `[RegisterAsTransientKeyed("key")]` | Transient with a key |
 
-This method takes an array of marker types that indicate which assemblies to scan for service implementations.
+Optional parameters like `useTryAddSingleton`, `useTryAddScoped`, or `useTryAddTransient` let you control whether to use `TryAdd` or `Add`.
 
-In case your service class implements an interface to abstract itself, the interface must be the last interface implemented.
+If your service implements multiple interfaces, you can specify the intended one using `serviceInterface`:
 
-### Examples:
-
-Here is an example of a service implementation that registers itself as a scoped service:
-
-```
-[RegisterAsScoped] 
-public class ProductCommandServices : IProductCommandServices 
-{ 
-	public Task<Product> CreateProduct(Product product) 
-	{ 
-		// Implementation for creating a product 
-	} 
-}
-```
-
-And here is an example of a service that registers itself as a singleton service using 'TryAddSingleton'
-
-```
-[RegisterAsSingleton(useTryAddSingleton: true)] 
-public class GetCurrentUser 
-{ 
-	public Task<User> GetCurrentUser() 
-	{ 
-		// Implementation for getting the current user 
-	} 
-}
-```
-
-
-### Keyed Services (Available in .NET 8+)
-
-Register and resolve services with specific keys:
-
-```
-[RegisterAsSingletonKeyed("primary")] 
-public class PrimaryEmailService : IEmailService 
-{ 
-	// Implementation 
-}
-
-[RegisterAsSingletonKeyed("secondary")] 
-public class SecondaryEmailService : IEmailService 
-{ 
-	// Implementation 
-}
-
-// Consume keyed services 
-public class EmailManager 
-{ 
-	private readonly IEmailService _primaryService; 
-	private readonly IEmailService _secondaryService;
-
-	public EmailManager([FromKeyedServices("primary")] IEmailService primaryService, 
-	                    [FromKeyedServices("secondary")] IEmailService secondaryService)
-	{
-	    _primaryService = primaryService;
-	    _secondaryService = secondaryService;
-	}
-}
-```
-
-
-### Decorator Pattern Support
-
-Easily implement the decorator pattern for your services:
-
-```
-public interface INotificationService 
-{ 
-  void SendNotification(string message); 
-}
-
-[RegisterAsScoped] 
-[DecorateWith(typeof(LoggingNotificationDecorator), order: 0)]
-public class EmailNotificationService : INotificationService 
-{ 
-  public void SendNotification(string message) 
-  { 
-    // Send email notification 
-  } 
-}
-
-public class LoggingNotificationDecorator : INotificationService 
-{ 
-  private readonly INotificationService _inner; 
-  
-  private readonly ILogger _logger;
-  
-  public LoggingNotificationDecorator(INotificationService inner, ILogger logger)
-  {
-      _inner = inner;
-      _logger = logger;
-  }
-
-  public void SendNotification(string message)
-  {
-      _logger.Log($"Sending notification: {message}");
-      _inner.SendNotification(message);
-  }
-}
-```
-
-### Registration Diagnostics
-
-Get insights into your service registrations:
-
-```
-var registeredServices = ServicesExtension.GetRegisteredServices();;
-
-foreach (var info in registeredServices) 
-{ 
-  Console.WriteLine($"Service Type: {service.ServiceType}, Implementation Type: {service.ImplementationType}, Lifetime: {service.Lifetime}, Key: {service.ServiceKey}, Registration Method: {service.RegistrationMethod}, Attribute Used: {service.AttributeUsed}");
-}
-```
-
-
-### Anti-Pattern Validation
-
-EasyServiceRegister helps you avoid common DI anti-patterns by validating your registrations:
-
-```
-var validationIssues = builder.Services.ValidateServices();
-
-foreach (var issue in validationIssues)
+```csharp
+[RegisterAsScoped(serviceInterface: typeof(ISomeService))]
+public class SomeService : ISomeService, IDisposable
 {
-    Console.WriteLine(issue);
+    // ...
 }
 ```
 
+---
 
-With EasyServiceRegister, you can simplify your code by eliminating the need for huge extension methods and a cluttered Startup class.
+### 2. Register All Services
+
+Call `AddServices` in your `Startup.cs` or `Program.cs`:
+
+```csharp
+services.AddServices(typeof(MyServiceMarkerType)); // Marker class from your assembly
+
+// or
+
+services.AddServices(typeof(Assembly1), typeof(Assembly2));
+```
+
+---
+
+## 📦 Examples
+
+### Simple Scoped Service
+
+```csharp
+[RegisterAsScoped]
+public class ProductService : IProductService
+{
+    public Task<Product> CreateProduct(Product product)
+    {
+        // Implementation
+    }
+}
+```
+
+### Singleton with TryAdd
+
+```csharp
+[RegisterAsSingleton(useTryAddSingleton: true)]
+public class CurrentUserProvider
+{
+    public Task<User> GetCurrentUser()
+    {
+        // Implementation
+    }
+}
+```
+
+---
+
+## 🔑 Keyed Services (.NET 8+)
+
+Register and resolve services by key:
+
+```csharp
+[RegisterAsSingletonKeyed("primary")]
+public class PrimaryEmailService : IEmailService { }
+
+[RegisterAsSingletonKeyed("secondary")]
+public class SecondaryEmailService : IEmailService { }
+```
+
+```csharp
+public class EmailManager
+{
+    public EmailManager(
+        [FromKeyedServices("primary")] IEmailService primary,
+        [FromKeyedServices("secondary")] IEmailService secondary)
+    {
+        // Use services
+    }
+}
+```
+
+---
+
+## 🧱 Decorator Pattern Support
+
+Easily layer cross-cutting concerns:
+
+```csharp
+public interface INotificationService
+{
+    MessageDto Send(string message);
+}
+
+[RegisterAsScoped]
+[DecorateWith(typeof(LoggingDecorator), order: 0)]
+[DecorateWith(typeof(StoreNotificationDecorator), order: 1)]
+public class EmailNotificationService : INotificationService
+{
+    public MessageDto Send(string message)
+    {
+        // Send email notification
+    }
+}
+
+public class LoggingDecorator : INotificationService
+{
+    private readonly INotificationService _inner;
+    private readonly ILogger _logger;
+
+    public LoggingDecorator(INotificationService inner, ILogger logger)
+    {
+        _inner = inner;
+        _logger = logger;
+    }
+
+    public MessageDto Send(string message)
+    {
+        _logger.LogInformation("Sending: {message}", message);
+        _inner.Send(message);
+        _logger.LogInformation("Sent: {message}", message);
+    }
+}
+
+public class StoreNotificationDecorator : INotificationService
+{
+    private readonly INotificationService _inner;
+    private readonly DbContext _dbContext;
+
+    public StoreNotificationDecorator(INotificationService inner, DbContext dbContext)
+    {
+        _inner = inner;
+        _dbContext = dbContext;
+    }
+
+    public void Send(string message)
+    {
+       var messageDto = _inner.Send(message);
+       _dbContext.Messages.Add(messageDto);
+       _dbContext.SaveChanges();
+    }
+}
+```
+
+---
+
+## 🧪 Diagnostics & Validation
+
+### 🔍 List Registered Services
+
+```csharp
+var registered = ServicesExtension.GetRegisteredServices();
+
+foreach (var svc in registered)
+{
+    Console.WriteLine($"Type: {svc.ServiceType}, Impl: {svc.ImplementationType}, Lifetime: {svc.Lifetime}, Key: {svc.ServiceKey}");
+}
+```
+
+### ⚠️ Detect Anti-Patterns
+
+Find issues like circular dependencies or incorrect lifetimes:
+
+```csharp
+var issues = builder.Services.ValidateServices();
+
+foreach (var issue in issues)
+{
+    Console.WriteLine(issue.Message);
+}
+```
+
+---
+
+## ✅ Why Use EasyServiceRegister?
+
+- ✅ Eliminates repetitive service registration
+- ✅ Works with standard `IServiceCollection`
+- ✅ Supports decorators, keyed services, and diagnostics
+- ✅ Keeps your startup file clean and maintainable
+
+---
+
+## 📄 License
+
+MIT ©

@@ -1,5 +1,7 @@
 ﻿//using EasyServiceRegister.Attributes;
 
+// Uncomment the following code to create a circular dependency scenario.
+
 //namespace EasyServiceRegister.Sample.Services;
 
 //[RegisterAsScoped]
@@ -17,4 +19,4 @@
 //{
 //}
 
-////A → B → C → A
+//A → B → C → A

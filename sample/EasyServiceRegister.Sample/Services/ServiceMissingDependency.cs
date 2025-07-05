@@ -1,5 +1,7 @@
 ﻿//using EasyServiceRegister.Attributes;
 
+//Uncomment the following code to demonstrate a service with a missing dependency.
+
 //namespace EasyServiceRegister.Sample.Services;
 
 //[RegisterAsSingleton]

@@ -247,7 +247,7 @@ namespace EasyServiceRegister
             });
         }
 
-        private static void RegisterKeyedService(IServiceCollection services, Type abstractionType, Type implementationType, bool useTryAdd, string key, ServiceLifetime lifetime)
+        private static void RegisterKeyedService(IServiceCollection services, Type abstractionType, Type implementationType, bool useTryAdd, object key, ServiceLifetime lifetime)
         {
 #if NET8_0_OR_GREATER
             var typeInfo = implementationType.GetTypeInfo();

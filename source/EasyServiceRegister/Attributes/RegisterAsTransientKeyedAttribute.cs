@@ -11,7 +11,7 @@ namespace EasyServiceRegister.Attributes
         /// <summary>
         /// Key for the service registration.
         /// </summary>
-        internal string Key { get; }
+        internal object Key { get; }
 
         /// <summary>
         /// Indicates whether to use TryAddTransient instead of AddTransient for registration.
@@ -23,7 +23,7 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsTransientKeyedAttribute(string key, Type serviceInterface = null, bool useTryAdd = false)
+        public RegisterAsTransientKeyedAttribute(object key, Type serviceInterface = null, bool useTryAdd = false)
         {
             Key = key;
             ServiceInterface = serviceInterface;

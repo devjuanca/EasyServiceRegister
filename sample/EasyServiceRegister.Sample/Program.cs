@@ -35,6 +35,8 @@ app.MapGet("/scoped-service", (ScopedSampleService scopedSampleService) => scope
 
 app.MapGet("/keyed-scoped-service", ([FromKeyedServices("KeyedScopedSampleServices")] KeyedScopedSampleServices keyedScopedSampleServices) => keyedScopedSampleServices.GetId());
 
+app.MapGet("/enum-keyed-scoped-service", ([FromKeyedServices(ScopedSampleServiceEnum.OneValue)] EnumKeyedScopedSampleServices enumKeyedScopedSampleServices) => enumKeyedScopedSampleServices.GetId());
+
 app.MapGet("/singleton-service", (SingletonSampleService singletonSampleService) => singletonSampleService.GetId());
 
 app.MapGet("/transient-service", (TransientSampleService transientSampleService) => transientSampleService.GetId());

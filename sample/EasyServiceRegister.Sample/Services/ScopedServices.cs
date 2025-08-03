@@ -24,6 +24,23 @@ public class KeyedScopedSampleServices
     }
 }
 
+[RegisterAsScopedKeyed(ScopedSampleServiceEnum.OneValue)]
+public class EnumKeyedScopedSampleServices
+{
+    private Guid Id { get; } = Guid.NewGuid();
+
+    public string GetId()
+    {
+        return $"Get Id from KeyedScopedSampleServices: {Id}";
+    }
+}
+
+public enum ScopedSampleServiceEnum
+{
+    OneValue,
+    SecondValue
+}
+
 public interface IScopedSampleService
 {
     string GetId();

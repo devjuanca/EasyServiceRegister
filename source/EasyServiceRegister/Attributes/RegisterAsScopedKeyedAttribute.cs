@@ -11,7 +11,7 @@ namespace EasyServiceRegister.Attributes
         /// <summary>
         ///  Key for the service registration. 
         /// </summary>
-        internal string Key { get; }
+        internal object Key { get; }
 
         /// <summary>
         ///  Indicates whether to use TryAddScoped instead of AddScoped for registration.
@@ -23,7 +23,7 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsScopedKeyedAttribute(string key, Type serviceInterface = null, bool useTryAddScoped = false)
+        public RegisterAsScopedKeyedAttribute(object key, Type serviceInterface = null, bool useTryAddScoped = false)
         {
             Key = key;
             ServiceInterface = serviceInterface;

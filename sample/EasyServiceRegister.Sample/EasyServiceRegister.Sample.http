@@ -16,6 +16,11 @@ Accept: application/json
 
 ###
 
+GET {{EasyServiceRegister.Sample_HostAddress}}/enum-keyed-scoped-service
+Accept: application/json
+
+###
+
 GET {{EasyServiceRegister.Sample_HostAddress}}/singleton-service
 Accept: application/json
 

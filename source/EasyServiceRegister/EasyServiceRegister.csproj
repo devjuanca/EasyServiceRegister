@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
 		<ImplicitUsings>disable</ImplicitUsings>
-		<VersionPrefix>3.0.3</VersionPrefix>
+		<VersionPrefix>3.0.4</VersionPrefix>
 		<PackageIcon>icon.png</PackageIcon>
 	</PropertyGroup>
 
@@ -26,12 +26,12 @@
 
 	<!--netstandard2.1-->
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="[6.0.0, 10.0.0)" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="[6.0.0, 11.0.0)" />
 	</ItemGroup>
 
 	<!--net8.0-->
 	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="[8.0.0, 10.0.0)" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="[8.0.0, 11.0.0)" />
 	</ItemGroup>
 
 	<ItemGroup>

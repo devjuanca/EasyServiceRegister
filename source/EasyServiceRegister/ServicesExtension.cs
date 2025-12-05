@@ -192,6 +192,86 @@ namespace EasyServiceRegister
 
         private static void RegisterService(IServiceCollection services, Type abstractionType, TypeInfo implementationType, bool useTryAdd, ServiceLifetime lifetime)
         {
+            // Handle open generic registrations
+            if (implementationType.IsGenericTypeDefinition)
+            {
+                var impl = implementationType.AsType();
+
+                // If abstraction type not provided, try to infer matching generic interface definition
+                if (abstractionType == null)
+                {
+                    var match = implementationType.ImplementedInterfaces
+                        .Select(i => i.IsGenericType ? i.GetGenericTypeDefinition() : i)
+                        .LastOrDefault(i => !implementationType.ImplementedInterfaces.Any(parent => parent != i && (i.IsAssignableFrom(parent.IsGenericType ? parent.GetGenericTypeDefinition() : parent))));
+
+                    abstractionType = match;
+                }
+
+                // Self registration if no interfaces
+                if (!implementationType.ImplementedInterfaces.Any() && abstractionType == null)
+                {
+                    var descriptor = new ServiceDescriptor(impl, impl, lifetime);
+
+                    if (useTryAdd)
+                    {
+                        services.TryAdd(descriptor);
+                    }
+                    else
+                    {
+                        services.Add(descriptor);
+                    }
+
+                    _registrationLog.Add(new ServiceRegistrationInfo
+                    {
+                        ServiceType = impl,
+                        ImplementationType = impl,
+                        Lifetime = lifetime,
+                        RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                        AttributeUsed = GetAttributeNameForLifetime(lifetime)
+                    });
+                    return;
+                }
+
+                // Normalize abstraction to generic type definition if needed
+                if (abstractionType != null)
+                {
+                    abstractionType = abstractionType.IsGenericType ? abstractionType.GetGenericTypeDefinition() : abstractionType;
+
+                    // Validate implementation actually implements abstraction generic definition
+                    var implementedGenericDefs = implementationType.ImplementedInterfaces
+                        .Select(i => i.IsGenericType ? i.GetGenericTypeDefinition() : i)
+                        .ToHashSet();
+
+                    if (!implementedGenericDefs.Contains(abstractionType))
+                    {
+                        throw new InvalidOperationException($"The type {implementationType.FullName} does not implement the abstraction type {abstractionType.FullName}.");
+                    }
+
+                    var descriptor = new ServiceDescriptor(abstractionType, impl, lifetime);
+
+                    if (useTryAdd)
+                    {
+                        services.TryAdd(descriptor);
+                    }
+                    else
+                    {
+                        services.Add(descriptor);
+                    }
+
+                    _registrationLog.Add(new ServiceRegistrationInfo
+                    {
+                        ServiceType = abstractionType,
+                        ImplementationType = impl,
+                        Lifetime = lifetime,
+                        RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                        AttributeUsed = GetAttributeNameForLifetime(lifetime)
+                    });
+                    return;
+                }
+
+                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement the service.");
+            }
+
             if (!implementationType.ImplementedInterfaces.Any())
             {
                 if (useTryAdd)
@@ -219,12 +299,12 @@ namespace EasyServiceRegister
 
             if (abstractionType != null && !implementationType.ImplementedInterfaces.Contains(abstractionType))
             {
-                throw new Exception($"The type {implementationType.FullName} does not implement the abstraction type {abstractionType.FullName}.");
+                throw new InvalidOperationException($"The type {implementationType.FullName} does not implement the abstraction type {abstractionType.FullName}.");
             }
 
             if (abstractionType == null)
             {
-                throw new Exception($"No abstraction type found for {implementationType.FullName} that can implement the service.");
+                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement the service.");
             }
 
             switch (useTryAdd)
@@ -251,6 +331,84 @@ namespace EasyServiceRegister
         {
 #if NET8_0_OR_GREATER
             var typeInfo = implementationType.GetTypeInfo();
+
+            // Handle open generic registrations for keyed services
+            if (typeInfo.IsGenericTypeDefinition)
+            {
+                var impl = implementationType;
+
+                if (abstractionType == null)
+                {
+                    var match = typeInfo.ImplementedInterfaces
+                        .Select(i => i.IsGenericType ? i.GetGenericTypeDefinition() : i)
+                        .LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && (i.IsAssignableFrom(parent.IsGenericType ? parent.GetGenericTypeDefinition() : parent))));
+
+                    abstractionType = match;
+                }
+
+                if (!typeInfo.ImplementedInterfaces.Any() && abstractionType == null)
+                {
+                    var descriptor = new ServiceDescriptor(impl, serviceKey: key, impl, lifetime: lifetime);
+
+                    if (useTryAdd)
+                    {
+                        services.TryAdd(descriptor);
+                    }
+                    else
+                    {
+                        services.Add(descriptor);
+                    }
+
+                    _registrationLog.Add(new ServiceRegistrationInfo
+                    {
+                        ServiceType = impl,
+                        ImplementationType = impl,
+                        Lifetime = lifetime,
+                        ServiceKey = key,
+                        RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                        AttributeUsed = GetAttributeNameForLifetime(lifetime, isKeyed: true)
+                    });
+                    return;
+                }
+
+                if (abstractionType != null)
+                {
+                    abstractionType = abstractionType.IsGenericType ? abstractionType.GetGenericTypeDefinition() : abstractionType;
+
+                    var implementedGenericDefs = typeInfo.ImplementedInterfaces
+                        .Select(i => i.IsGenericType ? i.GetGenericTypeDefinition() : i)
+                        .ToHashSet();
+
+                    if (!implementedGenericDefs.Contains(abstractionType))
+                    {
+                        throw new Exception($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+                    }
+
+                    var descriptor = new ServiceDescriptor(abstractionType, serviceKey: key, impl, lifetime);
+
+                    if (useTryAdd)
+                    {
+                        services.TryAdd(descriptor);
+                    }
+                    else
+                    {
+                        services.Add(descriptor);
+                    }
+
+                    _registrationLog.Add(new ServiceRegistrationInfo
+                    {
+                        ServiceType = abstractionType,
+                        ImplementationType = impl,
+                        Lifetime = lifetime,
+                        ServiceKey = key,
+                        RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                        AttributeUsed = GetAttributeNameForLifetime(lifetime, isKeyed: true)
+                    });
+                    return;
+                }
+
+                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+            }
 
             if (!typeInfo.ImplementedInterfaces.Any())
             {
@@ -280,7 +438,7 @@ namespace EasyServiceRegister
 
             if (abstractionType == null)
             {
-                throw new Exception($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
             }
 
             switch (useTryAdd)
@@ -338,7 +496,7 @@ namespace EasyServiceRegister
                     {
                         if (!registration.ServiceType.IsAssignableFrom(attr.DecoratorType))
                         {
-                            throw new Exception($"Decorator type {attr.DecoratorType.FullName} does not implement service interface {registration.ServiceType.FullName}");
+                            throw new InvalidOperationException($"Decorator type {attr.DecoratorType.FullName} does not implement service interface {registration.ServiceType.FullName}");
                         }
 
                         // Add decorator info and apply it

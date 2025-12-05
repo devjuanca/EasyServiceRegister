@@ -41,6 +41,16 @@ app.MapGet("/singleton-service", (SingletonSampleService singletonSampleService)
 
 app.MapGet("/transient-service", (TransientSampleService transientSampleService) => transientSampleService.GetId());
 
+app.MapGet("/generic-service", (IGenericService<WeatherForecast> genericService, IScopedSampleService scopedSampleService) =>
+{
+    var weather = genericService.DoSomething(new WeatherForecast 
+    { 
+     Date = DateTime.Now, TemperatureC = 25, Summary = "Sunny"
+    });
+
+    return weather;
+});
+
 //Decorator Sample
 app.MapGet("/weather-forecast", (IWeatherService weatherService) =>
 {

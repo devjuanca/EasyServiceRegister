@@ -17,6 +17,12 @@ This guide covers the advanced features added to EasyServiceRegister to enhance 
 
 Automatically register services based on naming conventions without using attributes.
 
+**Important:** By default, convention-based registration:
+- **Skips types with attributes** - Services already marked with `[RegisterAsScoped]`, `[RegisterAsSingleton]`, etc. are skipped to avoid duplicates
+- **Uses TryAdd** - Won't override existing registrations, preventing conflicts when combined with attribute-based registration
+
+You can control this behavior with the `skipTypesWithAttributes` and `useTryAdd` parameters.
+
 ### Register by Naming Convention
 
 ```csharp
@@ -27,6 +33,14 @@ services.AddServicesByConvention(
     typeof(Program).Assembly,
     lifetime: ServiceLifetime.Scoped,
     interfaceNamePattern: "I{0}");
+
+// Override defaults to include services with attributes and use Add instead of TryAdd
+services.AddServicesByConvention(
+    typeof(Program).Assembly,
+    lifetime: ServiceLifetime.Scoped,
+    interfaceNamePattern: "I{0}",
+    skipTypesWithAttributes: false,
+    useTryAdd: false);
 ```
 
 ### Register by Suffix
@@ -54,6 +68,37 @@ services.AddServicesByNamespace(
     namespace: "MyApp.Services",
     lifetime: ServiceLifetime.Scoped,
     includeSubNamespaces: true);
+```
+
+### Combining with Attribute-Based Registration
+
+The recommended approach is to call `AddServices()` first, then use convention-based registration:
+
+```csharp
+// 1. Register services with attributes first (these have priority)
+services.AddServices(typeof(Program));
+
+// 2. Convention-based registration will skip types with attributes and use TryAdd
+services.AddServicesByConvention(
+    typeof(Program).Assembly,
+    ServiceLifetime.Scoped);
+```
+
+This ensures:
+- Services with explicit attributes are registered as configured
+- Convention-based registration fills in the gaps for services without attributes
+- No duplicate registrations occur
+
+If you want convention-based to take priority, reverse the order:
+
+```csharp
+// 1. Register by convention first
+services.AddServicesByConvention(
+    typeof(Program).Assembly,
+    ServiceLifetime.Scoped);
+
+// 2. Attribute-based registration (use TryAdd in attributes to avoid overriding)
+services.AddServices(typeof(Program));
 ```
 
 ---
@@ -307,13 +352,13 @@ File.WriteAllText("service-registrations.csv", csv);
 
 ### Combining Features
 
-You can combine multiple features for powerful registration scenarios:
+You can combine multiple features for powerful registration scenarios. Convention-based registration is designed to work seamlessly with attribute-based registration:
 
 ```csharp
-// 1. Use attributes for core services
+// 1. Use attributes for core services (these have priority)
 services.AddServices(typeof(Program));
 
-// 2. Use conventions for repositories
+// 2. Use conventions for repositories (automatically skips types with attributes)
 services.AddServicesByConvention(
     typeof(Program).Assembly,
     lifetime: ServiceLifetime.Scoped,
@@ -337,6 +382,8 @@ foreach (var issue in issues)
 var report = EnhancedDiagnostics.GenerateRegistrationReport();
 File.WriteAllText("diagnostics.txt", report);
 ```
+
+**Note:** Convention-based methods automatically skip types with EasyServiceRegister attributes and use `TryAdd` by default, preventing duplicate registrations. This allows you to safely combine different registration approaches.
 
 ### Performance Considerations
 

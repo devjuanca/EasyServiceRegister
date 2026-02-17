@@ -205,12 +205,30 @@ foreach (var issue in issues)
 
 ---
 
+## 🚀 Advanced Features
+
+EasyServiceRegister now includes powerful advanced features for enhanced productivity:
+
+- **Convention-Based Registration** - Auto-register services by naming patterns
+- **Batch Registration** - Register multiple services with fluent API
+- **Assembly Filtering** - Fine-grained control over type scanning
+- **Conditional Registration** - Environment-based service registration
+- **Registration Interceptors** - Hook into the registration process
+- **Enhanced Diagnostics** - Detailed reports, statistics, and CSV export
+
+📖 See [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md) for detailed documentation and examples.
+
+---
+
 ## ✅ Why Use EasyServiceRegister?
 
 - ✅ Eliminates repetitive service registration
 - ✅ Works with standard `IServiceCollection`
 - ✅ Supports decorators, keyed services, and diagnostics
 - ✅ Keeps your startup file clean and maintainable
+- ✅ Convention-based and batch registration options
+- ✅ Advanced filtering and conditional registration
+- ✅ Comprehensive diagnostic tools
 
 ---
 

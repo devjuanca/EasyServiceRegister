@@ -10,7 +10,7 @@ namespace EasyServiceRegister.Attributes
     public class RegisterAsScopedAttribute : Attribute
     {
         /// <summary>
-        /// Indicates whether to use TryAddScoped instead of AddScoped for registration. 
+        /// Indicates whether to use TryAddScoped instead of AddScoped for registration.
         /// </summary>
         internal bool UseTryAddScoped { get; set; }
 
@@ -19,10 +19,16 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsScopedAttribute(Type serviceInterface = null, bool useTryAddScoped = false)
+        /// <summary>
+        /// When true, registers the implementation against all its implemented interfaces.
+        /// </summary>
+        internal bool RegisterAsAllInterfaces { get; set; }
+
+        public RegisterAsScopedAttribute(Type serviceInterface = null, bool useTryAddScoped = false, bool registerAsAllInterfaces = false)
         {
             ServiceInterface = serviceInterface;
             UseTryAddScoped = useTryAddScoped;
+            RegisterAsAllInterfaces = registerAsAllInterfaces;
         }
     }
 }

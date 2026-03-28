@@ -20,7 +20,7 @@ dotnet add package EasyServiceRegister
 
 ## ⚙️ How It Works
 
-### 1. Add a registration attribute to your service class:
+### 1. Add a registration attribute to your service class
 
 | Attribute | Description |
 |----------|-------------|

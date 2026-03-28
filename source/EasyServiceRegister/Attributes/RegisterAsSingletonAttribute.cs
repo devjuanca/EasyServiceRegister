@@ -1,9 +1,7 @@
 ﻿using System;
 
 namespace EasyServiceRegister.Attributes
-
 {
-
     /// <summary>
     /// Marks a class to be registered as a singleton service.
     /// </summary>
@@ -20,10 +18,16 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsSingletonAttribute(Type serviceInterface = null, bool useTryAddSingleton = false)
+        /// <summary>
+        /// When true, registers the implementation against all its implemented interfaces.
+        /// </summary>
+        internal bool RegisterAsAllInterfaces { get; set; }
+
+        public RegisterAsSingletonAttribute(Type serviceInterface = null, bool useTryAddSingleton = false, bool registerAsAllInterfaces = false)
         {
             ServiceInterface = serviceInterface;
             UseTryAddSingleton = useTryAddSingleton;
+            RegisterAsAllInterfaces = registerAsAllInterfaces;
         }
     }
 }

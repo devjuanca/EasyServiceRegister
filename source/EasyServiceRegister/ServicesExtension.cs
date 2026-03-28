@@ -1,4 +1,4 @@
-﻿using EasyServiceRegister.Attributes;
+using EasyServiceRegister.Attributes;
 using EasyServiceRegister.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -42,6 +42,14 @@ namespace EasyServiceRegister
         }
 
         /// <summary>
+        /// Clears the registration log. Useful for test scenarios where AddServices is called multiple times.
+        /// </summary>
+        public static void ClearRegistrationLog()
+        {
+            _registrationLog.Clear();
+        }
+
+        /// <summary>
         /// Scans the assemblies containing the specified marker types and registers services
         /// based on custom attributes such as RegisterAsSingleton, RegisterAsScoped, RegisterAsTransient,
         /// and their keyed variants.
@@ -51,147 +59,138 @@ namespace EasyServiceRegister
         /// <returns>The IServiceCollection for chaining.</returns>
         public static IServiceCollection AddServices(this IServiceCollection services, params Type[] handlerAssemblyMarkerTypes)
         {
-            try
+            foreach (var markerType in handlerAssemblyMarkerTypes)
             {
-                foreach (var markerType in handlerAssemblyMarkerTypes)
-                {
-                    Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
-
-                    RegisterSingletonServices(services, assembly);
-                    RegisterScopedServices(services, assembly);
-                    RegisterTransientServices(services, assembly);
-
-#if NET8_0_OR_GREATER
-                    RegisterKeyedScopedService(services, assembly);
-                    RegisterKeyedSingletonService(services, assembly);
-                    RegisterKeyedTransientService(services, assembly);
-#endif
-                    ApplyDecorators(services, assembly);
-                }
-
-                return services;
+                Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
+                RegisterAllFromAssembly(services, assembly, filter: null);
             }
-            catch
-            {
-                throw;
-            }
+
+            return services;
         }
 
         /// <summary>
         /// Scans the provided assemblies and registers services
         /// based on custom attributes such as RegisterAsSingleton, RegisterAsScoped, RegisterAsTransient,
         /// and their keyed variants.
-        /// Scans the provided assemblies and registers services
-        /// based on custom attributes such as RegisterAsSingleton, RegisterAsScoped, RegisterAsTransient,
-        /// and their keyed variants.
         /// </summary>
-        /// <param name="services"></param>
-        /// <param name="assemblies"></param>
-        /// <returns></returns>
+        /// <param name="services">The IServiceCollection to add the services to.</param>
+        /// <param name="assemblies">The assemblies to scan for service registrations.</param>
+        /// <returns>The IServiceCollection for chaining.</returns>
         public static IServiceCollection AddServices(this IServiceCollection services, params Assembly[] assemblies)
         {
-            try
+            foreach (var assembly in assemblies)
             {
-                foreach (var assembly in assemblies)
+                RegisterAllFromAssembly(services, assembly, filter: null);
+            }
+            return services;
+        }
+
+        /// <summary>
+        /// Scans the assemblies containing the specified marker types and registers services,
+        /// applying the given filter to control which types are registered.
+        /// </summary>
+        /// <param name="services">The IServiceCollection to add the services to.</param>
+        /// <param name="filter">A predicate to filter which types should be registered. Types for which the predicate returns false are skipped.</param>
+        /// <param name="handlerAssemblyMarkerTypes">Types used to locate assemblies to scan for service registrations.</param>
+        /// <returns>The IServiceCollection for chaining.</returns>
+        public static IServiceCollection AddServices(this IServiceCollection services, Func<TypeInfo, bool> filter, params Type[] handlerAssemblyMarkerTypes)
+        {
+            foreach (var markerType in handlerAssemblyMarkerTypes)
+            {
+                Assembly assembly = Assembly.GetAssembly(markerType) ?? throw new Exception("Assembly for this type does not exist");
+                RegisterAllFromAssembly(services, assembly, filter);
+            }
+
+            return services;
+        }
+
+        /// <summary>
+        /// Scans the provided assemblies and registers services,
+        /// applying the given filter to control which types are registered.
+        /// </summary>
+        /// <param name="services">The IServiceCollection to add the services to.</param>
+        /// <param name="filter">A predicate to filter which types should be registered. Types for which the predicate returns false are skipped.</param>
+        /// <param name="assemblies">The assemblies to scan for service registrations.</param>
+        /// <returns>The IServiceCollection for chaining.</returns>
+        public static IServiceCollection AddServices(this IServiceCollection services, Func<TypeInfo, bool> filter, params Assembly[] assemblies)
+        {
+            foreach (var assembly in assemblies)
+            {
+                RegisterAllFromAssembly(services, assembly, filter);
+            }
+            return services;
+        }
+
+        /// <summary>
+        /// Performs a single pass over the assembly's defined types, collecting and processing
+        /// all registration attributes in one iteration instead of scanning the assembly multiple times.
+        /// </summary>
+        private static void RegisterAllFromAssembly(IServiceCollection services, Assembly assembly, Func<TypeInfo, bool> filter)
+        {
+            foreach (var typeInfo in assembly.DefinedTypes)
+            {
+                if (filter != null && !filter(typeInfo))
+                    continue;
+
+                // Read each attribute type once per type (avoids redundant reflection)
+                var singletonAttr = typeInfo.GetCustomAttribute<RegisterAsSingletonAttribute>();
+                var scopedAttr = typeInfo.GetCustomAttribute<RegisterAsScopedAttribute>();
+                var transientAttr = typeInfo.GetCustomAttribute<RegisterAsTransientAttribute>();
+
+                if (singletonAttr != null)
                 {
-                    RegisterSingletonServices(services, assembly);
-                    RegisterScopedServices(services, assembly);
-                    RegisterTransientServices(services, assembly);
-#if NET8_0_OR_GREATER
-                    RegisterKeyedScopedService(services, assembly);
-                    RegisterKeyedSingletonService(services, assembly);
-                    RegisterKeyedTransientService(services, assembly);
-#endif
-                    ApplyDecorators(services, assembly);
+                    RegisterService(services, singletonAttr.ServiceInterface, typeInfo, singletonAttr.UseTryAddSingleton, ServiceLifetime.Singleton, singletonAttr.RegisterAsAllInterfaces);
                 }
-                return services;
-            }
-            catch
-            {
-                throw;
-            }
-        }
 
-        private static void RegisterSingletonServices(IServiceCollection services, Assembly assembly)
-        {
-            var singletonServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonAttribute>() != null);
+                if (scopedAttr != null)
+                {
+                    RegisterService(services, scopedAttr.ServiceInterface, typeInfo, scopedAttr.UseTryAddScoped, ServiceLifetime.Scoped, scopedAttr.RegisterAsAllInterfaces);
+                }
 
-            foreach (var implementationType in singletonServicesToRegister)
-            {
-                var registerBehavior = implementationType.GetCustomAttribute<RegisterAsSingletonAttribute>()?.UseTryAddSingleton ?? false;
-                var serviceInterface = implementationType.GetCustomAttribute<RegisterAsSingletonAttribute>()?.ServiceInterface;
-                RegisterService(services, serviceInterface, implementationType, registerBehavior, ServiceLifetime.Singleton);
-            }
-        }
+                if (transientAttr != null)
+                {
+                    RegisterService(services, transientAttr.ServiceInterface, typeInfo, transientAttr.UseTryAddTransient, ServiceLifetime.Transient, transientAttr.RegisterAsAllInterfaces);
+                }
 
-        private static void RegisterScopedServices(IServiceCollection services, Assembly assembly)
-        {
-            var scopedServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedAttribute>() != null);
+#if NET8_0_OR_GREATER
+                var singletonKeyedAttr = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>();
+                var scopedKeyedAttr = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>();
+                var transientKeyedAttr = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>();
 
-            foreach (var implementationType in scopedServicesToRegister)
-            {
-                var registerBehavior = implementationType.GetCustomAttribute<RegisterAsScopedAttribute>()?.UseTryAddScoped ?? false;
-                var serviceInterface = implementationType.GetCustomAttribute<RegisterAsScopedAttribute>()?.ServiceInterface;
-                RegisterService(services, serviceInterface, implementationType, registerBehavior, ServiceLifetime.Scoped);
-            }
-        }
+                if (singletonKeyedAttr != null)
+                {
+                    RegisterKeyedService(services, singletonKeyedAttr.ServiceInterface, typeInfo, singletonKeyedAttr.UseTryAddSingleton, singletonKeyedAttr.Key, ServiceLifetime.Singleton, singletonKeyedAttr.RegisterAsAllInterfaces);
+                }
 
-        private static void RegisterTransientServices(IServiceCollection services, Assembly assembly)
-        {
-            var transientServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientAttribute>() != null);
+                if (scopedKeyedAttr != null)
+                {
+                    RegisterKeyedService(services, scopedKeyedAttr.ServiceInterface, typeInfo, scopedKeyedAttr.UseTryAddScoped, scopedKeyedAttr.Key, ServiceLifetime.Scoped, scopedKeyedAttr.RegisterAsAllInterfaces);
+                }
 
-            foreach (var implementationType in transientServicesToRegister)
-            {
-                var registerBehavior = implementationType.GetCustomAttribute<RegisterAsTransientAttribute>()?.UseTryAddTransient ?? false;
-                var serviceInterface = implementationType.GetCustomAttribute<RegisterAsTransientAttribute>()?.ServiceInterface;
-                RegisterService(services, serviceInterface, implementationType, registerBehavior, ServiceLifetime.Transient);
+                if (transientKeyedAttr != null)
+                {
+                    RegisterKeyedService(services, transientKeyedAttr.ServiceInterface, typeInfo, transientKeyedAttr.UseTryAddTransient, transientKeyedAttr.Key, ServiceLifetime.Transient, transientKeyedAttr.RegisterAsAllInterfaces);
+                }
+#endif
+
+                // Collect decorator attributes for this type
+                var decoratorAttributes = typeInfo.GetCustomAttributes<DecorateWithAttribute>().ToList();
+                if (decoratorAttributes.Count > 0)
+                {
+                    ApplyDecoratorsForType(services, typeInfo, decoratorAttributes);
+                }
             }
         }
 
-        private static void RegisterKeyedScopedService(IServiceCollection services, Assembly assembly)
+        private static void RegisterService(IServiceCollection services, Type abstractionType, TypeInfo implementationType, bool useTryAdd, ServiceLifetime lifetime, bool registerAsAllInterfaces)
         {
-            var scopedServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsScopedKeyedAttribute>() != null);
-
-            foreach (var implementationType in scopedServicesToRegister)
+            // Handle registerAsAllInterfaces mode
+            if (registerAsAllInterfaces)
             {
-                var typeInfo = implementationType.GetTypeInfo();
-                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>()?.UseTryAddScoped ?? false;
-                var key = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>().Key;
-                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsScopedKeyedAttribute>()?.ServiceInterface;
-                RegisterKeyedService(services, serviceInterface, implementationType, registerBehavior, key, ServiceLifetime.Scoped);
+                RegisterAsAllInterfacesInternal(services, implementationType, useTryAdd, lifetime);
+                return;
             }
-        }
 
-        private static void RegisterKeyedSingletonService(IServiceCollection services, Assembly assembly)
-        {
-            var singletonServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>() != null);
-
-            foreach (var implementationType in singletonServicesToRegister)
-            {
-                var typeInfo = implementationType.GetTypeInfo();
-                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>()?.UseTryAddSingleton ?? false;
-                var key = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>().Key;
-                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsSingletonKeyedAttribute>()?.ServiceInterface;
-                RegisterKeyedService(services, serviceInterface, implementationType, registerBehavior, key, ServiceLifetime.Singleton);
-            }
-        }
-
-        private static void RegisterKeyedTransientService(IServiceCollection services, Assembly assembly)
-        {
-            var transientServicesToRegister = assembly.DefinedTypes.Where(a => a.GetCustomAttribute<RegisterAsTransientKeyedAttribute>() != null);
-
-            foreach (var implementationType in transientServicesToRegister)
-            {
-                var typeInfo = implementationType.GetTypeInfo();
-                var registerBehavior = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>()?.UseTryAddTransient ?? false;
-                var key = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>().Key;
-                var serviceInterface = typeInfo.GetCustomAttribute<RegisterAsTransientKeyedAttribute>()?.ServiceInterface;
-                RegisterKeyedService(services, serviceInterface, implementationType, registerBehavior, key, ServiceLifetime.Transient);
-            }
-        }
-
-        private static void RegisterService(IServiceCollection services, Type abstractionType, TypeInfo implementationType, bool useTryAdd, ServiceLifetime lifetime)
-        {
             // Handle open generic registrations
             if (implementationType.IsGenericTypeDefinition)
             {
@@ -327,9 +326,16 @@ namespace EasyServiceRegister
             });
         }
 
-        private static void RegisterKeyedService(IServiceCollection services, Type abstractionType, Type implementationType, bool useTryAdd, object key, ServiceLifetime lifetime)
+        private static void RegisterKeyedService(IServiceCollection services, Type abstractionType, Type implementationType, bool useTryAdd, object key, ServiceLifetime lifetime, bool registerAsAllInterfaces)
         {
 #if NET8_0_OR_GREATER
+            // Handle registerAsAllInterfaces mode
+            if (registerAsAllInterfaces)
+            {
+                RegisterAsAllInterfacesKeyedInternal(services, implementationType, useTryAdd, key, lifetime);
+                return;
+            }
+
             var typeInfo = implementationType.GetTypeInfo();
 
             // Handle open generic registrations for keyed services
@@ -381,7 +387,7 @@ namespace EasyServiceRegister
 
                     if (!implementedGenericDefs.Contains(abstractionType))
                     {
-                        throw new Exception($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+                        throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement the service.");
                     }
 
                     var descriptor = new ServiceDescriptor(abstractionType, serviceKey: key, impl, lifetime);
@@ -407,7 +413,7 @@ namespace EasyServiceRegister
                     return;
                 }
 
-                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement the service.");
             }
 
             if (!typeInfo.ImplementedInterfaces.Any())
@@ -438,7 +444,7 @@ namespace EasyServiceRegister
 
             if (abstractionType == null)
             {
-                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement tha service.");
+                throw new InvalidOperationException($"No abstraction type found for {implementationType.FullName} that can implement the service.");
             }
 
             switch (useTryAdd)
@@ -463,6 +469,77 @@ namespace EasyServiceRegister
 #endif
         }
 
+        private static void RegisterAsAllInterfacesInternal(IServiceCollection services, TypeInfo implementationType, bool useTryAdd, ServiceLifetime lifetime)
+        {
+            var implType = implementationType.AsType();
+            var interfaces = implementationType.ImplementedInterfaces.ToList();
+
+            if (interfaces.Count == 0)
+            {
+                throw new InvalidOperationException($"RegisterAsAllInterfaces was specified for {implementationType.FullName} but it does not implement any interfaces.");
+            }
+
+            foreach (var iface in interfaces)
+            {
+                var descriptor = new ServiceDescriptor(iface, implType, lifetime);
+
+                if (useTryAdd)
+                {
+                    services.TryAdd(descriptor);
+                }
+                else
+                {
+                    services.Add(descriptor);
+                }
+
+                _registrationLog.Add(new ServiceRegistrationInfo
+                {
+                    ServiceType = iface,
+                    ImplementationType = implType,
+                    Lifetime = lifetime,
+                    RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                    AttributeUsed = GetAttributeNameForLifetime(lifetime)
+                });
+            }
+        }
+
+#if NET8_0_OR_GREATER
+        private static void RegisterAsAllInterfacesKeyedInternal(IServiceCollection services, Type implementationType, bool useTryAdd, object key, ServiceLifetime lifetime)
+        {
+            var typeInfo = implementationType.GetTypeInfo();
+            var interfaces = typeInfo.ImplementedInterfaces.ToList();
+
+            if (interfaces.Count == 0)
+            {
+                throw new InvalidOperationException($"RegisterAsAllInterfaces was specified for {implementationType.FullName} but it does not implement any interfaces.");
+            }
+
+            foreach (var iface in interfaces)
+            {
+                var descriptor = new ServiceDescriptor(iface, serviceKey: key, implementationType, lifetime);
+
+                if (useTryAdd)
+                {
+                    services.TryAdd(descriptor);
+                }
+                else
+                {
+                    services.Add(descriptor);
+                }
+
+                _registrationLog.Add(new ServiceRegistrationInfo
+                {
+                    ServiceType = iface,
+                    ImplementationType = implementationType,
+                    Lifetime = lifetime,
+                    ServiceKey = key,
+                    RegistrationMethod = useTryAdd ? "TryAdd" : "Add",
+                    AttributeUsed = GetAttributeNameForLifetime(lifetime, isKeyed: true)
+                });
+            }
+        }
+#endif
+
         private static string GetAttributeNameForLifetime(ServiceLifetime lifetime, bool isKeyed = false)
         {
             return (lifetime, isKeyed) switch
@@ -477,33 +554,28 @@ namespace EasyServiceRegister
             };
         }
 
-        private static void ApplyDecorators(IServiceCollection services, Assembly assembly)
+        private static void ApplyDecoratorsForType(IServiceCollection services, TypeInfo implementationType, List<DecorateWithAttribute> decoratorAttributes)
         {
-            foreach (var implementationType in assembly.DefinedTypes.Where(t => t.GetCustomAttributes<DecorateWithAttribute>().Any()))
+            var orderedDecorators = decoratorAttributes.OrderByDescending(attr => attr.Order);
+
+            foreach (var registration in _registrationLog.Where(r => r.ImplementationType == implementationType.AsType()))
             {
-                // Get decorators and service registrations.
-                var decoratorAttributes = implementationType.GetCustomAttributes<DecorateWithAttribute>()
-                    .OrderByDescending(attr => attr.Order);
-
-                foreach (var registration in _registrationLog.Where(r => r.ImplementationType == implementationType))
+                if (registration.ServiceType == implementationType.AsType())
                 {
-                    if (registration.ServiceType == implementationType)
+                    continue;
+                }
+
+                foreach (var attr in orderedDecorators)
+                {
+                    if (!registration.ServiceType.IsAssignableFrom(attr.DecoratorType))
                     {
-                        continue;
+                        throw new InvalidOperationException($"Decorator type {attr.DecoratorType.FullName} does not implement service interface {registration.ServiceType.FullName}");
                     }
 
-                    foreach (var attr in decoratorAttributes)
-                    {
-                        if (!registration.ServiceType.IsAssignableFrom(attr.DecoratorType))
-                        {
-                            throw new InvalidOperationException($"Decorator type {attr.DecoratorType.FullName} does not implement service interface {registration.ServiceType.FullName}");
-                        }
+                    // Add decorator info and apply it
+                    registration.Decorators.Add(new DecoratorInfo { DecoratorType = attr.DecoratorType, Order = attr.Order });
 
-                        // Add decorator info and apply it
-                        registration.Decorators.Add(new DecoratorInfo { DecoratorType = attr.DecoratorType, Order = attr.Order });
-
-                        services.AddDecorator(registration.ServiceType, attr.DecoratorType);
-                    }
+                    services.AddDecorator(registration.ServiceType, attr.DecoratorType);
                 }
             }
         }

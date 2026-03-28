@@ -19,10 +19,16 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsTransientAttribute(Type serviceInterface = null, bool useTryAddTransient = false)
+        /// <summary>
+        /// When true, registers the implementation against all its implemented interfaces.
+        /// </summary>
+        internal bool RegisterAsAllInterfaces { get; set; }
+
+        public RegisterAsTransientAttribute(Type serviceInterface = null, bool useTryAddTransient = false, bool registerAsAllInterfaces = false)
         {
             ServiceInterface = serviceInterface;
             UseTryAddTransient = useTryAddTransient;
+            RegisterAsAllInterfaces = registerAsAllInterfaces;
         }
     }
 }

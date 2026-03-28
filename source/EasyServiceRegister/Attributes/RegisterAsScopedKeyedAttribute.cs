@@ -23,11 +23,17 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsScopedKeyedAttribute(object key, Type serviceInterface = null, bool useTryAddScoped = false)
+        /// <summary>
+        /// When true, registers the implementation against all its implemented interfaces.
+        /// </summary>
+        internal bool RegisterAsAllInterfaces { get; set; }
+
+        public RegisterAsScopedKeyedAttribute(object key, Type serviceInterface = null, bool useTryAddScoped = false, bool registerAsAllInterfaces = false)
         {
             Key = key;
             ServiceInterface = serviceInterface;
             UseTryAddScoped = useTryAddScoped;
+            RegisterAsAllInterfaces = registerAsAllInterfaces;
         }
     }
 }

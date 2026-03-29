@@ -94,4 +94,59 @@ namespace EasyServiceRegister.Tests.Fixtures
     {
         public CircularC(ICircularA a) { }
     }
+
+    // === Disposable Transient (memory leak) ===
+
+    public interface IDisposableTransientService
+    {
+        string Value { get; }
+    }
+
+    [RegisterAsTransient]
+    public class DisposableTransientService : IDisposableTransientService, System.IDisposable
+    {
+        public string Value => "disposable";
+        public void Dispose() { }
+    }
+
+    // === Captive Dependency Chain: Singleton -> Singleton -> Scoped ===
+
+    public interface IOuterSingleton
+    {
+        string Value { get; }
+    }
+
+    public interface IMiddleSingleton
+    {
+        string Value { get; }
+    }
+
+    [RegisterAsSingleton]
+    public class OuterSingleton : IOuterSingleton
+    {
+        private readonly IMiddleSingleton _middle;
+        public OuterSingleton(IMiddleSingleton middle) { _middle = middle; }
+        public string Value => _middle.Value;
+    }
+
+    [RegisterAsSingleton]
+    public class MiddleSingleton : IMiddleSingleton
+    {
+        private readonly IScopedDependency _scoped;
+        public MiddleSingleton(IScopedDependency scoped) { _scoped = scoped; }
+        public string Value => _scoped.Value;
+    }
+
+    // === EnsureServicesAreValid: clean services (no errors) ===
+
+    public interface ICleanService
+    {
+        string Value { get; }
+    }
+
+    [RegisterAsScoped]
+    public class CleanService : ICleanService
+    {
+        public string Value => "clean";
+    }
 }

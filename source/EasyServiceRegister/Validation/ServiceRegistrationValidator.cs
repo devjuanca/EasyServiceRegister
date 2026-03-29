@@ -17,10 +17,70 @@ namespace EasyServiceRegister.Validation
     }
 
     /// <summary>
+    /// Exception thrown by EnsureServicesAreValid when validation errors are found.
+    /// </summary>
+    public class ServiceValidationException : Exception
+    {
+        /// <summary>
+        /// The validation issues that caused the exception.
+        /// </summary>
+        public IReadOnlyList<ValidationIssue> Issues { get; }
+
+        public ServiceValidationException(IReadOnlyList<ValidationIssue> issues)
+            : base(FormatMessage(issues))
+        {
+            Issues = issues;
+        }
+
+        private static string FormatMessage(IReadOnlyList<ValidationIssue> issues)
+        {
+            var errors = issues.Where(i => i.Severity == ValidationSeverity.Error).ToList();
+            var warnings = issues.Where(i => i.Severity == ValidationSeverity.Warning).ToList();
+
+            var lines = new List<string>
+            {
+                $"Service validation failed with {errors.Count} error(s) and {warnings.Count} warning(s):"
+            };
+
+            foreach (var issue in issues)
+            {
+                lines.Add($"  [{issue.Severity}] {issue.Message}");
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+    }
+
+    /// <summary>
     /// Validates service registrations to detect potential issues
     /// </summary>
     public static class ServiceRegistrationValidator
     {
+        /// <summary>
+        /// Validates service registrations and throws a <see cref="ServiceValidationException"/>
+        /// if any errors are found. Warnings are included in the exception but do not cause a throw on their own.
+        /// Call this at startup to fail fast on misconfigured services.
+        /// </summary>
+        /// <param name="services">The service collection to validate</param>
+        /// <param name="validateFrameworkServices">Whether to include framework services in validation</param>
+        /// <returns>The IServiceCollection for chaining.</returns>
+        /// <exception cref="ServiceValidationException">Thrown when validation errors are detected.</exception>
+        public static IServiceCollection EnsureServicesAreValid(
+            this IServiceCollection services,
+            bool validateFrameworkServices = false)
+        {
+            var issues = services.ValidateServices(ValidationSeverity.Warning, validateFrameworkServices).ToList();
+
+            var hasErrors = issues.Any(i => i.Severity == ValidationSeverity.Error);
+
+            if (hasErrors)
+            {
+                throw new ServiceValidationException(issues);
+            }
+
+            return services;
+        }
+
         /// <summary>
         /// Validates service registrations and returns any issues found
         /// </summary>
@@ -42,45 +102,6 @@ namespace EasyServiceRegister.Validation
 
             // Cache constructor info to avoid repeated reflection
             var constructorCache = new Dictionary<Type, ConstructorInfo>();
-
-            // Check for duplicate service registrations
-#if NET8_0_OR_GREATER
-            var serviceGroups = services
-                .Where(s => validateFrameworkServices || registeredServiceTypes.Contains(s.ServiceType))
-                .GroupBy(s => new { s.ServiceType, IsKeyed = IsKeyedService(s) })
-                .Where(g => g.Count() > 1 && !IsEnumerableService(g.Key.ServiceType));
-
-            foreach (var group in serviceGroups)
-            {
-                string keyInfo = group.Key.IsKeyed ? " (keyed service)" : string.Empty;
-
-                // Duplicate services are just a warning, not a critical error
-                issues.Add(new ValidationIssue(
-                    $"Duplicate service registration detected for '{group.Key.ServiceType.FullName}'{keyInfo}. Only the last registration will be used at resolution time, which may lead to unexpected behavior. If this is intentional, consider injecting IEnumerable<{group.Key.ServiceType.FullName}> to access all implementations.",
-                    ValidationSeverity.Warning,
-                    group.Key.ServiceType,
-                    group.First().ImplementationType
-                ));
-
-            }
-#else
-        var serviceGroups = services
-            .Where(s => validateFrameworkServices || registeredServiceTypes.Contains(s.ServiceType))
-            .GroupBy(s => s.ServiceType)
-            .Where(g => g.Count() > 1 && !IsEnumerableService(g.Key));
-
-        foreach (var group in serviceGroups)
-        {
-            // Duplicate services are just a warning, not a critical error
-            issues.Add(new ValidationIssue(
-                $"Duplicate registration for service {group.Key.FullName}. " +
-                $"This may cause unexpected behavior as only the last registration will be used.",
-                ValidationSeverity.Warning,
-                group.Key,
-                group.First().ImplementationType
-            ));
-        }
-#endif
 
             // Check for services with missing dependencies
             foreach (var descriptor in services.Where(s => registeredServiceTypes.Contains(s.ServiceType)))
@@ -106,10 +127,40 @@ namespace EasyServiceRegister.Validation
                 }
             }
 
+            // Check for disposable transient services (potential memory leak)
+            foreach (var descriptor in services.Where(s => s.Lifetime == ServiceLifetime.Transient))
+            {
+                var implType = descriptor.ImplementationType;
+                if (implType != null && typeof(IDisposable).IsAssignableFrom(implType))
+                {
+                    // Only warn for services registered through EasyServiceRegister
+                    if (registeredServiceTypes.Contains(descriptor.ServiceType))
+                    {
+                        issues.Add(new ValidationIssue(
+                            $"Transient service {implType.FullName} implements IDisposable. Transient disposable services are not tracked by the DI container and will not be disposed, which may cause memory leaks. Consider changing the lifetime to Scoped or Singleton, or managing disposal manually.",
+                            ValidationSeverity.Warning,
+                            descriptor.ServiceType,
+                            implType
+                        ));
+                    }
+                }
+            }
+
             // Check for lifetime issues (scoped or transient services injected into singletons)
             var singletonServices = services
                 .Where(s => s.Lifetime == ServiceLifetime.Singleton)
                 .ToList();
+
+            // Build lookup for captive dependency chain detection
+            var lifetimeLookup = new Dictionary<Type, ServiceLifetime>();
+            foreach (var desc in services)
+            {
+                if (desc.ImplementationType != null)
+                {
+                    // Last wins
+                    lifetimeLookup[desc.ServiceType] = desc.Lifetime;
+                }
+            }
 
             // Get scoped and transient services
             var scopedServices = GetServicesWithLifetime(services, ServiceLifetime.Scoped);
@@ -165,6 +216,10 @@ namespace EasyServiceRegister.Validation
                             singleton.ImplementationType
                         ));
                     }
+
+                    // Check for captive dependencies through intermediate singletons
+                    // A(singleton) -> B(singleton) -> C(scoped) is a captive dependency chain
+                    DetectCaptiveDependencyChain(singleton.ImplementationType, services, constructorCache, lifetimeLookup, issues, new HashSet<Type>());
                 }
             }
 
@@ -279,12 +334,6 @@ namespace EasyServiceRegister.Validation
             return dependencies;
         }
 
-        private static bool IsEnumerableService(Type serviceType)
-        {
-            return serviceType.IsGenericType &&
-                   serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>);
-        }
-
         private static IEnumerable<Type> GetMissingDependencies(ConstructorInfo primaryConstructor, IServiceCollection services)
         {
             var missingDependencies = new List<Type>();
@@ -336,6 +385,64 @@ namespace EasyServiceRegister.Validation
             return type.IsGenericType &&
                   (type.GetGenericTypeDefinition() == typeof(Nullable<>) ||
                    type.Name.Contains("Optional"));
+        }
+
+        private static void DetectCaptiveDependencyChain(
+            Type rootSingletonImpl,
+            IServiceCollection services,
+            Dictionary<Type, ConstructorInfo> constructorCache,
+            Dictionary<Type, ServiceLifetime> lifetimeLookup,
+            List<ValidationIssue> issues,
+            HashSet<Type> visited)
+        {
+            if (!visited.Add(rootSingletonImpl))
+                return;
+
+            var constructor = GetPrimaryConstructor(rootSingletonImpl, constructorCache);
+            if (constructor == null)
+                return;
+
+            foreach (var param in constructor.GetParameters())
+            {
+                var depType = param.ParameterType;
+
+                if (IsFrameworkType(depType) || IsOptionalService(depType))
+                    continue;
+
+                // Find the descriptor for this dependency
+                var depDescriptor = services.LastOrDefault(s => s.ServiceType == depType);
+                if (depDescriptor?.ImplementationType == null)
+                    continue;
+
+                // Only follow singleton intermediaries
+                if (depDescriptor.Lifetime != ServiceLifetime.Singleton)
+                    continue;
+
+                // Check this singleton's own dependencies for captive scoped services
+                var innerConstructor = GetPrimaryConstructor(depDescriptor.ImplementationType, constructorCache);
+                if (innerConstructor == null)
+                    continue;
+
+                foreach (var innerParam in innerConstructor.GetParameters())
+                {
+                    var innerDepType = innerParam.ParameterType;
+                    if (IsFrameworkType(innerDepType) || IsOptionalService(innerDepType))
+                        continue;
+
+                    if (lifetimeLookup.TryGetValue(innerDepType, out var innerLifetime) && innerLifetime == ServiceLifetime.Scoped)
+                    {
+                        issues.Add(new ValidationIssue(
+                            $"Captive dependency detected: singleton {rootSingletonImpl.FullName} -> singleton {depDescriptor.ImplementationType.FullName} -> scoped {innerDepType.FullName}. The scoped service will be captured by the singleton chain and will not be disposed per scope.",
+                            ValidationSeverity.Error,
+                            depDescriptor.ServiceType,
+                            depDescriptor.ImplementationType
+                        ));
+                    }
+                }
+
+                // Recurse deeper through singleton intermediaries
+                DetectCaptiveDependencyChain(depDescriptor.ImplementationType, services, constructorCache, lifetimeLookup, issues, visited);
+            }
         }
 
         private static Dictionary<Type, List<Type>> BuildDependencyGraph(IServiceCollection services, Dictionary<Type, ConstructorInfo> constructorCache)

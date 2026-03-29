@@ -1,8 +1,10 @@
-﻿//using EasyServiceRegister.Attributes;
+﻿using EasyServiceRegister.Attributes;
 
-// Uncomment the following code to create a circular dependency scenario.
+//Uncomment the following code to create a circular dependency scenario.
 
-//namespace EasyServiceRegister.Sample.Services;
+//A → B → C → A
+
+namespace EasyServiceRegister.Sample.Services;
 
 //[RegisterAsScoped]
 //public class A(B b)
@@ -18,5 +20,3 @@
 //public class C(A a)
 //{
 //}
-
-//A → B → C → A

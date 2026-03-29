@@ -1,10 +1,10 @@
-﻿# EasyServiceRegister
+# EasyServiceRegister
 
 **Simple, Attribute-Based Dependency Injection for .NET**
 
 EasyServiceRegister is a lightweight library built on top of `Microsoft.Extensions.DependencyInjection.Abstractions`. It simplifies the registration of services using attributes, supporting lifetimes, keyed services, decorators, and validation — all with minimal boilerplate.
 
-> ✅ Now supporting **keyed services** (.NET 8+) and **registration diagnostics** in **v3.0.0+**
+> ✅ Now supporting **keyed services** (.NET 8+), **registration diagnostics**, and **startup validation** in **v3.1.0+**
 
 ---
 
@@ -43,6 +43,16 @@ public class SomeService : ISomeService, IDisposable
 }
 ```
 
+Or register against all implemented interfaces at once:
+
+```csharp
+[RegisterAsScoped(registerAsAllInterfaces: true)]
+public class SomeService : ISomeService, IAnotherService
+{
+    // Registered as both ISomeService and IAnotherService
+}
+```
+
 ---
 
 ### 2. Register All Services
@@ -56,6 +66,27 @@ services.AddServices(typeof(MyServiceMarkerType)); // Marker class from your ass
 
 services.AddServices(typeof(Assembly1), typeof(Assembly2));
 ```
+
+You can also filter which types get registered:
+
+```csharp
+services.AddServices(
+    filter: t => t.Namespace.Contains("Services"),
+    typeof(MyServiceMarkerType));
+```
+
+---
+
+### 3. Validate at Startup
+
+Add one line to fail fast on misconfigured services:
+
+```csharp
+builder.Services.AddServices(typeof(Program));
+builder.Services.EnsureServicesAreValid(); // Throws on errors, includes warnings
+```
+
+This catches issues **before** your app starts handling requests — no more runtime DI exceptions.
 
 ---
 
@@ -177,9 +208,71 @@ public class StoreNotificationDecorator : INotificationService
 
 ---
 
-## 🧪 Diagnostics & Validation
+## 🛡️ Validation
 
-### 🔍 List Registered Services
+EasyServiceRegister includes a built-in validation system that detects common DI misconfigurations at startup — before they become runtime exceptions.
+
+### Quick Setup
+
+```csharp
+builder.Services.AddServices(typeof(Program));
+builder.Services.EnsureServicesAreValid(); // Throws ServiceValidationException on errors
+```
+
+`EnsureServicesAreValid()` throws a `ServiceValidationException` if any **errors** are found. Warnings are included in the exception details but don't trigger a throw on their own. The method returns the `IServiceCollection` for chaining.
+
+### What It Detects
+
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| **Missing dependencies** | Error | A service's constructor requires a type that isn't registered |
+| **Scoped in singleton** | Error | A singleton depends on a scoped service (fails at runtime) |
+| **Captive dependency chain** | Error | A singleton -> singleton -> scoped chain captures a scoped service |
+| **Circular dependencies** | Error | A -> B -> C -> A cycles in the dependency graph |
+| **Disposable transients** | Warning | A transient implements `IDisposable` but won't be disposed by the container |
+| **Transient in singleton** | Warning | A singleton depends on a transient (instantiated only once) |
+
+### Advanced Usage
+
+For more control, use `ValidateServices()` directly:
+
+```csharp
+var issues = builder.Services.ValidateServices();
+
+foreach (var issue in issues)
+{
+    Console.WriteLine($"[{issue.Severity}] {issue.Message}");
+}
+```
+
+Filter by severity:
+
+```csharp
+var errorsOnly = builder.Services.ValidateServices(minimumSeverity: ValidationSeverity.Error);
+```
+
+### Handling the Exception
+
+```csharp
+try
+{
+    builder.Services.EnsureServicesAreValid();
+}
+catch (ServiceValidationException ex)
+{
+    foreach (var issue in ex.Issues)
+    {
+        Console.WriteLine($"[{issue.Severity}] {issue.Message}");
+        // issue.ServiceType and issue.ImplementationType available for programmatic handling
+    }
+}
+```
+
+---
+
+## 🔍 Diagnostics
+
+### List Registered Services
 
 ```csharp
 var registered = ServicesExtension.GetRegisteredServices();
@@ -190,17 +283,11 @@ foreach (var svc in registered)
 }
 ```
 
-### ⚠️ Detect Anti-Patterns
-
-Find issues like circular dependencies or incorrect lifetimes:
+Filter by type or lifetime:
 
 ```csharp
-var issues = builder.Services.ValidateServices();
-
-foreach (var issue in issues)
-{
-    Console.WriteLine(issue.Message);
-}
+var singletons = ServicesExtension.GetRegisteredServices(lifetime: ServiceLifetime.Singleton);
+var specific = ServicesExtension.GetRegisteredServices(serviceType: typeof(IMyService));
 ```
 
 ---
@@ -211,6 +298,7 @@ foreach (var issue in issues)
 - ✅ Works with standard `IServiceCollection`
 - ✅ Supports decorators, keyed services, and diagnostics
 - ✅ Keeps your startup file clean and maintainable
+- ✅ Catches DI misconfigurations at startup, not at runtime
 
 ---
 

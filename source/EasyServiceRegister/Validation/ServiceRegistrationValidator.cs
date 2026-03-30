@@ -126,7 +126,7 @@ namespace EasyServiceRegister.Validation
 
             foreach (var singleton in singletonServices)
             {
-                if (singleton.ImplementationType != null)
+                if (singleton.ImplementationType != null && !IsFrameworkType(singleton.ImplementationType))
                 {
                     var primaryConstructor = GetPrimaryConstructor(singleton.ImplementationType, constructorCache);
 
@@ -324,7 +324,8 @@ namespace EasyServiceRegister.Validation
 
                 if (!hasService &&
                     !IsFrameworkType(parameterType) &&
-                    !IsOptionalService(parameterType))
+                    !IsOptionalService(parameterType) &&
+                    !parameter.HasDefaultValue)
                 {
                     missingDependencies.Add(parameterType);
                 }

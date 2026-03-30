@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using EasyServiceRegister.Exceptions;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,8 +14,10 @@ namespace EasyServiceRegister.Validation
     internal class ServiceInfo
     {
         public Type Type { get; set; }
+        
         public bool IsKeyed { get; set; }
     }
+
 
     /// <summary>
     /// Validates service registrations to detect potential issues
@@ -22,69 +25,53 @@ namespace EasyServiceRegister.Validation
     public static class ServiceRegistrationValidator
     {
         /// <summary>
+        /// Validates service registrations and throws a <see cref="ServiceValidationException"/>
+        /// if any errors are found. Warnings are included in the exception but do not cause a throw on their own.
+        /// Call this at startup to fail fast on misconfigured services.
+        /// </summary>
+        /// <param name="services">The service collection to validate</param>
+        /// <returns>The IServiceCollection for chaining.</returns>
+        /// <exception cref="ServiceValidationException">Thrown when validation errors are detected.</exception>
+        public static IServiceCollection EnsureServicesAreValid(this IServiceCollection services)
+        {
+            var issues = services.ValidateServices(ValidationSeverity.Warning).ToList();
+
+            var hasErrors = issues.Any(i => i.Severity == ValidationSeverity.Error);
+
+            if (hasErrors)
+            {
+                throw new ServiceValidationException(issues);
+            }
+
+            return services;
+        }
+
+        /// <summary>
         /// Validates service registrations and returns any issues found
         /// </summary>
         /// <param name="services">The service collection to validate</param>
         /// <param name="minimumSeverity">The minimum severity level to include in results</param>
-        /// <param name="validateFrameworkServices">Whether to include framework services in validation</param>
         /// <returns>A collection of validation issues</returns>
-        public static IEnumerable<ValidationIssue> ValidateServices(
-            this IServiceCollection services,
-            ValidationSeverity minimumSeverity = ValidationSeverity.Warning,
-            bool validateFrameworkServices = false)
+        public static IEnumerable<ValidationIssue> ValidateServices(this IServiceCollection services, ValidationSeverity minimumSeverity = ValidationSeverity.Warning)
         {
             var issues = new List<ValidationIssue>();
 
-            // Get all registered services through EasyServiceRegister
-            var registeredServices = ServicesExtension.GetRegisteredServices().ToList();
-
-            var registeredServiceTypes = registeredServices.Select(r => r.ServiceType).ToList();
-
-            // Check for duplicate service registrations
-#if NET8_0_OR_GREATER
-            var serviceGroups = services
-                .Where(s => validateFrameworkServices || registeredServiceTypes.Contains(s.ServiceType))
-                .GroupBy(s => new { s.ServiceType, IsKeyed = IsKeyedService(s) })
-                .Where(g => g.Count() > 1 && !IsEnumerableService(g.Key.ServiceType));
-
-            foreach (var group in serviceGroups)
-            {
-                string keyInfo = group.Key.IsKeyed ? " (keyed service)" : string.Empty;
-
-                // Duplicate services are just a warning, not a critical error
-                issues.Add(new ValidationIssue(
-                    $"Duplicate service registration detected for '{group.Key.ServiceType.FullName}'{keyInfo}. Only the last registration will be used at resolution time, which may lead to unexpected behavior. If this is intentional, consider injecting IEnumerable<{group.Key.ServiceType.FullName}> to access all implementations.",
-                    ValidationSeverity.Warning,
-                    group.Key.ServiceType,
-                    group.First().ImplementationType
-                ));
-
-            }
-#else
-        var serviceGroups = services
-            .Where(s => validateFrameworkServices || registeredServiceTypes.Contains(s.ServiceType))
-            .GroupBy(s => s.ServiceType)
-            .Where(g => g.Count() > 1 && !IsEnumerableService(g.Key));
-
-        foreach (var group in serviceGroups)
-        {
-            // Duplicate services are just a warning, not a critical error
-            issues.Add(new ValidationIssue(
-                $"Duplicate registration for service {group.Key.FullName}. " +
-                $"This may cause unexpected behavior as only the last registration will be used.",
-                ValidationSeverity.Warning,
-                group.Key,
-                group.First().ImplementationType
-            ));
-        }
-#endif
+            // Cache constructor info to avoid repeated reflection
+            var constructorCache = new Dictionary<Type, ConstructorInfo>();
 
             // Check for services with missing dependencies
-            foreach (var descriptor in services.Where(s => registeredServiceTypes.Contains(s.ServiceType)))
+            foreach (var descriptor in services.Where(s => s.ImplementationType != null && !IsFrameworkType(s.ImplementationType)))
             {
                 if (descriptor.ImplementationType != null)
                 {
-                    var missingDependencies = GetMissingDependencies(descriptor.ImplementationType, services);
+                    var primaryConstructor = GetPrimaryConstructor(descriptor.ImplementationType, constructorCache);
+                    
+                    if (primaryConstructor == null)
+                    {
+                        continue;
+                    }
+
+                    var missingDependencies = GetMissingDependencies(primaryConstructor, services);
 
                     foreach (var dependency in missingDependencies)
                     {
@@ -99,10 +86,38 @@ namespace EasyServiceRegister.Validation
                 }
             }
 
+            // Check for disposable transient services (potential memory leak)
+            foreach (var descriptor in services.Where(s => s.Lifetime == ServiceLifetime.Transient))
+            {
+                var implType = descriptor.ImplementationType;
+
+                if (implType != null && !IsFrameworkType(implType) && typeof(IDisposable).IsAssignableFrom(implType))
+                {
+                    issues.Add(new ValidationIssue(
+                        $"Transient service {implType.FullName} implements IDisposable. Transient disposable services are not tracked by the DI container and will not be disposed, which may cause memory leaks. Consider changing the lifetime to Scoped or Singleton, or managing disposal manually.",
+                        ValidationSeverity.Warning,
+                        descriptor.ServiceType,
+                        implType
+                    ));
+                }
+            }
+
             // Check for lifetime issues (scoped or transient services injected into singletons)
             var singletonServices = services
                 .Where(s => s.Lifetime == ServiceLifetime.Singleton)
                 .ToList();
+
+            // Build lookup for captive dependency chain detection
+            var lifetimeLookup = new Dictionary<Type, ServiceLifetime>();
+
+            foreach (var desc in services)
+            {
+                if (desc.ImplementationType != null)
+                {
+                    // Last wins
+                    lifetimeLookup[desc.ServiceType] = desc.Lifetime;
+                }
+            }
 
             // Get scoped and transient services
             var scopedServices = GetServicesWithLifetime(services, ServiceLifetime.Scoped);
@@ -113,8 +128,15 @@ namespace EasyServiceRegister.Validation
             {
                 if (singleton.ImplementationType != null)
                 {
+                    var primaryConstructor = GetPrimaryConstructor(singleton.ImplementationType, constructorCache);
+
+                    if (primaryConstructor == null)
+                    {
+                        continue;
+                    }
+
                     // Check for scoped dependencies (this is a serious error)
-                    var scopedDependencies = GetLifetimeDependencies(singleton.ImplementationType, services, scopedServices);
+                    var scopedDependencies = GetLifetimeDependencies(primaryConstructor, services, scopedServices);
 
                     foreach (var scopedDependency in scopedDependencies)
                     {
@@ -135,7 +157,7 @@ namespace EasyServiceRegister.Validation
                     }
 
                     // Check for transient dependencies (this is a warning)
-                    var transientDependencies = GetLifetimeDependencies(singleton.ImplementationType, services, transientServices);
+                    var transientDependencies = GetLifetimeDependencies(primaryConstructor, services, transientServices);
 
                     foreach (var transientDependency in transientDependencies)
                     {
@@ -154,10 +176,14 @@ namespace EasyServiceRegister.Validation
                             singleton.ImplementationType
                         ));
                     }
+
+                    // Check for captive dependencies through intermediate singletons
+                    // A(singleton) -> B(singleton) -> C(scoped) is a captive dependency chain
+                    DetectCaptiveDependencyChain(singleton.ImplementationType, services, constructorCache, lifetimeLookup, issues, new HashSet<Type>());
                 }
             }
 
-            var graph = BuildDependencyGraph(services);
+            var graph = BuildDependencyGraph(services, constructorCache);
 
             var cycles = DetectCycles(graph);
 
@@ -178,6 +204,24 @@ namespace EasyServiceRegister.Validation
 
 
             return issues.Where(i => i.Severity >= minimumSeverity);
+        }
+
+        private static ConstructorInfo GetPrimaryConstructor(Type implementationType, Dictionary<Type, ConstructorInfo> cache)
+        {
+            if (cache.TryGetValue(implementationType, out var cached))
+            {
+                return cached;
+            }
+
+            var constructors = implementationType.GetConstructors();
+
+            var primary = constructors.Length == 0
+                ? null
+                : constructors.OrderByDescending(c => c.GetParameters().Length).First();
+
+            cache[implementationType] = primary;
+
+            return primary;
         }
 
         private static List<ServiceInfo> GetServicesWithLifetime(IServiceCollection services, ServiceLifetime lifetime)
@@ -210,20 +254,10 @@ namespace EasyServiceRegister.Validation
 #endif
 
         private static IEnumerable<ServiceInfo> GetLifetimeDependencies(
-            Type implementationType,
+            ConstructorInfo primaryConstructor,
             IServiceCollection services,
             List<ServiceInfo> servicesOfLifetime)
         {
-            var constructors = implementationType.GetConstructors();
-
-            if (constructors.Length == 0)
-            {
-                return Enumerable.Empty<ServiceInfo>();
-            }
-
-            // Get the constructor with the most parameters (assumed to be the primary constructor)
-            var primaryConstructor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
-
             var dependencies = new List<ServiceInfo>();
 
             foreach (var parameter in primaryConstructor.GetParameters())
@@ -264,23 +298,8 @@ namespace EasyServiceRegister.Validation
             return dependencies;
         }
 
-        private static bool IsEnumerableService(Type serviceType)
+        private static IEnumerable<Type> GetMissingDependencies(ConstructorInfo primaryConstructor, IServiceCollection services)
         {
-            return serviceType.IsGenericType &&
-                   serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>);
-        }
-
-        private static IEnumerable<Type> GetMissingDependencies(Type implementationType, IServiceCollection services)
-        {
-            var constructors = implementationType.GetConstructors();
-            if (constructors.Length == 0)
-            {
-                return Enumerable.Empty<Type>();
-            }
-
-            // Get the constructor with the most parameters (assumed to be the primary constructor)
-            var primaryConstructor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
-
             var missingDependencies = new List<Type>();
 
             foreach (var parameter in primaryConstructor.GetParameters())
@@ -332,9 +351,97 @@ namespace EasyServiceRegister.Validation
                    type.Name.Contains("Optional"));
         }
 
-        private static Dictionary<Type, List<Type>> BuildDependencyGraph(IServiceCollection services)
+        private static void DetectCaptiveDependencyChain(
+            Type rootSingletonImpl,
+            IServiceCollection services,
+            Dictionary<Type, ConstructorInfo> constructorCache,
+            Dictionary<Type, ServiceLifetime> lifetimeLookup,
+            List<ValidationIssue> issues,
+            HashSet<Type> visited)
+        {
+            if (!visited.Add(rootSingletonImpl))
+            {
+                return;
+            }
+
+            var constructor = GetPrimaryConstructor(rootSingletonImpl, constructorCache);
+
+            if (constructor == null)
+            {
+                return;
+            }
+
+            foreach (var param in constructor.GetParameters())
+            {
+                var depType = param.ParameterType;
+
+                if (IsFrameworkType(depType) || IsOptionalService(depType))
+                {
+                    continue;
+                }
+
+                // Find the descriptor for this dependency
+                var depDescriptor = services.LastOrDefault(s => s.ServiceType == depType);
+
+                if (depDescriptor?.ImplementationType == null)
+                {
+                    continue;
+                }
+
+                // Only follow singleton intermediaries
+                if (depDescriptor.Lifetime != ServiceLifetime.Singleton)
+                {
+                    continue;
+                }
+
+                // Check this singleton's own dependencies for captive scoped services
+                var innerConstructor = GetPrimaryConstructor(depDescriptor.ImplementationType, constructorCache);
+
+                if (innerConstructor == null)
+                {
+                    continue;
+                }
+
+                foreach (var innerParam in innerConstructor.GetParameters())
+                {
+                    var innerDepType = innerParam.ParameterType;
+
+                    if (IsFrameworkType(innerDepType) || IsOptionalService(innerDepType))
+                    {
+                        continue;
+                    }
+
+                    if (lifetimeLookup.TryGetValue(innerDepType, out var innerLifetime) && innerLifetime == ServiceLifetime.Scoped)
+                    {
+                        issues.Add(new ValidationIssue(
+                            $"Captive dependency detected: singleton {rootSingletonImpl.FullName} -> singleton {depDescriptor.ImplementationType.FullName} -> scoped {innerDepType.FullName}. The scoped service will be captured by the singleton chain and will not be disposed per scope.",
+                            ValidationSeverity.Error,
+                            depDescriptor.ServiceType,
+                            depDescriptor.ImplementationType
+                        ));
+                    }
+                }
+
+                // Recurse deeper through singleton intermediaries
+                DetectCaptiveDependencyChain(depDescriptor.ImplementationType, services, constructorCache, lifetimeLookup, issues, visited);
+            }
+        }
+
+        private static Dictionary<Type, List<Type>> BuildDependencyGraph(IServiceCollection services, Dictionary<Type, ConstructorInfo> constructorCache)
         {
             var graph = new Dictionary<Type, List<Type>>();
+
+            // Build a lookup from service type (interface) to implementation type
+            // so we can resolve interface dependencies to their implementations
+            var serviceToImpl = new Dictionary<Type, Type>();
+            foreach (var descriptor in services)
+            {
+                if (descriptor.ImplementationType != null)
+                {
+                    // Last registration wins (same as DI container behavior)
+                    serviceToImpl[descriptor.ServiceType] = descriptor.ImplementationType;
+                }
+            }
 
             foreach (var descriptor in services)
             {
@@ -350,9 +457,7 @@ namespace EasyServiceRegister.Validation
                     graph[implementationType] = dependencies;
                 }
 
-                var constructor = implementationType.GetConstructors()
-                    .OrderByDescending(c => c.GetParameters().Length)
-                    .FirstOrDefault();
+                var constructor = GetPrimaryConstructor(implementationType, constructorCache);
 
                 if (constructor == null)
                     continue;
@@ -365,7 +470,15 @@ namespace EasyServiceRegister.Validation
                     if (IsFrameworkType(dependencyType) || IsOptionalService(dependencyType))
                         continue;
 
-                    dependencies.Add(dependencyType);
+                    // Resolve service type to implementation type for cycle detection
+                    if (serviceToImpl.TryGetValue(dependencyType, out var resolvedImpl))
+                    {
+                        dependencies.Add(resolvedImpl);
+                    }
+                    else
+                    {
+                        dependencies.Add(dependencyType);
+                    }
                 }
             }
 

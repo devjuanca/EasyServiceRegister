@@ -9,14 +9,7 @@ builder.Services.AddScoped<DefaultWeatherService>();
 
 builder.Services.AddMemoryCache();
 
-builder.Services.AddServices(typeof(Program));
-
-var validationIssues = builder.Services.ValidateServices();
-
-foreach (var issue in validationIssues)
-{
-    Console.WriteLine(issue);
-}
+builder.Services.AddServices(typeof(Program)).EnsureServicesAreValid();
 
 var app = builder.Build();
 

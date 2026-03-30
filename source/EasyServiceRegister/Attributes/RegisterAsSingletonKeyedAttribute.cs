@@ -23,11 +23,17 @@ namespace EasyServiceRegister.Attributes
         /// </summary>
         internal Type ServiceInterface { get; set; }
 
-        public RegisterAsSingletonKeyedAttribute(object key, Type serviceInterface = null, bool useTryAdd = false)
+        /// <summary>
+        /// When true, registers the implementation against all its implemented interfaces.
+        /// </summary>
+        internal bool RegisterAsAllInterfaces { get; set; }
+
+        public RegisterAsSingletonKeyedAttribute(object key, Type serviceInterface = null, bool useTryAdd = false, bool registerAsAllInterfaces = false)
         {
             Key = key;
             ServiceInterface = serviceInterface;
             UseTryAddSingleton = useTryAdd;
+            RegisterAsAllInterfaces = registerAsAllInterfaces;
         }
     }
 }

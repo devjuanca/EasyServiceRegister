@@ -1,3 +1,4 @@
+using EasyServiceRegister.Exceptions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -13,43 +14,10 @@ namespace EasyServiceRegister.Validation
     internal class ServiceInfo
     {
         public Type Type { get; set; }
+        
         public bool IsKeyed { get; set; }
     }
 
-    /// <summary>
-    /// Exception thrown by EnsureServicesAreValid when validation errors are found.
-    /// </summary>
-    public class ServiceValidationException : Exception
-    {
-        /// <summary>
-        /// The validation issues that caused the exception.
-        /// </summary>
-        public IReadOnlyList<ValidationIssue> Issues { get; }
-
-        public ServiceValidationException(IReadOnlyList<ValidationIssue> issues)
-            : base(FormatMessage(issues))
-        {
-            Issues = issues;
-        }
-
-        private static string FormatMessage(IReadOnlyList<ValidationIssue> issues)
-        {
-            var errors = issues.Where(i => i.Severity == ValidationSeverity.Error).ToList();
-            var warnings = issues.Where(i => i.Severity == ValidationSeverity.Warning).ToList();
-
-            var lines = new List<string>
-            {
-                $"Service validation failed with {errors.Count} error(s) and {warnings.Count} warning(s):"
-            };
-
-            foreach (var issue in issues)
-            {
-                lines.Add($"  [{issue.Severity}] {issue.Message}");
-            }
-
-            return string.Join(Environment.NewLine, lines);
-        }
-    }
 
     /// <summary>
     /// Validates service registrations to detect potential issues
@@ -62,14 +30,11 @@ namespace EasyServiceRegister.Validation
         /// Call this at startup to fail fast on misconfigured services.
         /// </summary>
         /// <param name="services">The service collection to validate</param>
-        /// <param name="validateFrameworkServices">Whether to include framework services in validation</param>
         /// <returns>The IServiceCollection for chaining.</returns>
         /// <exception cref="ServiceValidationException">Thrown when validation errors are detected.</exception>
-        public static IServiceCollection EnsureServicesAreValid(
-            this IServiceCollection services,
-            bool validateFrameworkServices = false)
+        public static IServiceCollection EnsureServicesAreValid(this IServiceCollection services)
         {
-            var issues = services.ValidateServices(ValidationSeverity.Warning, validateFrameworkServices).ToList();
+            var issues = services.ValidateServices(ValidationSeverity.Warning).ToList();
 
             var hasErrors = issues.Any(i => i.Severity == ValidationSeverity.Error);
 
@@ -86,31 +51,25 @@ namespace EasyServiceRegister.Validation
         /// </summary>
         /// <param name="services">The service collection to validate</param>
         /// <param name="minimumSeverity">The minimum severity level to include in results</param>
-        /// <param name="validateFrameworkServices">Whether to include framework services in validation</param>
         /// <returns>A collection of validation issues</returns>
-        public static IEnumerable<ValidationIssue> ValidateServices(
-            this IServiceCollection services,
-            ValidationSeverity minimumSeverity = ValidationSeverity.Warning,
-            bool validateFrameworkServices = false)
+        public static IEnumerable<ValidationIssue> ValidateServices(this IServiceCollection services, ValidationSeverity minimumSeverity = ValidationSeverity.Warning)
         {
             var issues = new List<ValidationIssue>();
-
-            // Get all registered services through EasyServiceRegister
-            var registeredServices = ServicesExtension.GetRegisteredServices().ToList();
-
-            var registeredServiceTypes = registeredServices.Select(r => r.ServiceType).ToList();
 
             // Cache constructor info to avoid repeated reflection
             var constructorCache = new Dictionary<Type, ConstructorInfo>();
 
             // Check for services with missing dependencies
-            foreach (var descriptor in services.Where(s => registeredServiceTypes.Contains(s.ServiceType)))
+            foreach (var descriptor in services.Where(s => s.ImplementationType != null && !IsFrameworkType(s.ImplementationType)))
             {
                 if (descriptor.ImplementationType != null)
                 {
                     var primaryConstructor = GetPrimaryConstructor(descriptor.ImplementationType, constructorCache);
+                    
                     if (primaryConstructor == null)
+                    {
                         continue;
+                    }
 
                     var missingDependencies = GetMissingDependencies(primaryConstructor, services);
 
@@ -131,18 +90,15 @@ namespace EasyServiceRegister.Validation
             foreach (var descriptor in services.Where(s => s.Lifetime == ServiceLifetime.Transient))
             {
                 var implType = descriptor.ImplementationType;
-                if (implType != null && typeof(IDisposable).IsAssignableFrom(implType))
+
+                if (implType != null && !IsFrameworkType(implType) && typeof(IDisposable).IsAssignableFrom(implType))
                 {
-                    // Only warn for services registered through EasyServiceRegister
-                    if (registeredServiceTypes.Contains(descriptor.ServiceType))
-                    {
-                        issues.Add(new ValidationIssue(
-                            $"Transient service {implType.FullName} implements IDisposable. Transient disposable services are not tracked by the DI container and will not be disposed, which may cause memory leaks. Consider changing the lifetime to Scoped or Singleton, or managing disposal manually.",
-                            ValidationSeverity.Warning,
-                            descriptor.ServiceType,
-                            implType
-                        ));
-                    }
+                    issues.Add(new ValidationIssue(
+                        $"Transient service {implType.FullName} implements IDisposable. Transient disposable services are not tracked by the DI container and will not be disposed, which may cause memory leaks. Consider changing the lifetime to Scoped or Singleton, or managing disposal manually.",
+                        ValidationSeverity.Warning,
+                        descriptor.ServiceType,
+                        implType
+                    ));
                 }
             }
 
@@ -153,6 +109,7 @@ namespace EasyServiceRegister.Validation
 
             // Build lookup for captive dependency chain detection
             var lifetimeLookup = new Dictionary<Type, ServiceLifetime>();
+
             foreach (var desc in services)
             {
                 if (desc.ImplementationType != null)
@@ -172,8 +129,11 @@ namespace EasyServiceRegister.Validation
                 if (singleton.ImplementationType != null)
                 {
                     var primaryConstructor = GetPrimaryConstructor(singleton.ImplementationType, constructorCache);
+
                     if (primaryConstructor == null)
+                    {
                         continue;
+                    }
 
                     // Check for scoped dependencies (this is a serious error)
                     var scopedDependencies = GetLifetimeDependencies(primaryConstructor, services, scopedServices);
@@ -249,14 +209,18 @@ namespace EasyServiceRegister.Validation
         private static ConstructorInfo GetPrimaryConstructor(Type implementationType, Dictionary<Type, ConstructorInfo> cache)
         {
             if (cache.TryGetValue(implementationType, out var cached))
+            {
                 return cached;
+            }
 
             var constructors = implementationType.GetConstructors();
+
             var primary = constructors.Length == 0
                 ? null
                 : constructors.OrderByDescending(c => c.GetParameters().Length).First();
 
             cache[implementationType] = primary;
+
             return primary;
         }
 
@@ -396,38 +360,56 @@ namespace EasyServiceRegister.Validation
             HashSet<Type> visited)
         {
             if (!visited.Add(rootSingletonImpl))
+            {
                 return;
+            }
 
             var constructor = GetPrimaryConstructor(rootSingletonImpl, constructorCache);
+
             if (constructor == null)
+            {
                 return;
+            }
 
             foreach (var param in constructor.GetParameters())
             {
                 var depType = param.ParameterType;
 
                 if (IsFrameworkType(depType) || IsOptionalService(depType))
+                {
                     continue;
+                }
 
                 // Find the descriptor for this dependency
                 var depDescriptor = services.LastOrDefault(s => s.ServiceType == depType);
+
                 if (depDescriptor?.ImplementationType == null)
+                {
                     continue;
+                }
 
                 // Only follow singleton intermediaries
                 if (depDescriptor.Lifetime != ServiceLifetime.Singleton)
+                {
                     continue;
+                }
 
                 // Check this singleton's own dependencies for captive scoped services
                 var innerConstructor = GetPrimaryConstructor(depDescriptor.ImplementationType, constructorCache);
+
                 if (innerConstructor == null)
+                {
                     continue;
+                }
 
                 foreach (var innerParam in innerConstructor.GetParameters())
                 {
                     var innerDepType = innerParam.ParameterType;
+
                     if (IsFrameworkType(innerDepType) || IsOptionalService(innerDepType))
+                    {
                         continue;
+                    }
 
                     if (lifetimeLookup.TryGetValue(innerDepType, out var innerLifetime) && innerLifetime == ServiceLifetime.Scoped)
                     {

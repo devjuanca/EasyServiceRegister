@@ -1,3 +1,4 @@
+using EasyServiceRegister.Exceptions;
 using EasyServiceRegister.Tests.Fixtures;
 using EasyServiceRegister.Validation;
 using Microsoft.Extensions.DependencyInjection;

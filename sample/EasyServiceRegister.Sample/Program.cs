@@ -11,13 +11,6 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddServices(typeof(Program)).EnsureServicesAreValid();
 
-var validationIssues = builder.Services.ValidateServices();
-
-foreach (var issue in validationIssues)
-{
-    Console.WriteLine(issue);
-}
-
 var app = builder.Build();
 
 var registeredServices = ServicesExtension.GetRegisteredServices();

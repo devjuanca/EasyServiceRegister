@@ -199,11 +199,13 @@ namespace EasyServiceRegister
                 // If abstraction type not provided, try to infer matching generic interface definition
                 if (abstractionType == null)
                 {
-                    var match = implementationType.ImplementedInterfaces
+                    var openInterfaces = implementationType.ImplementedInterfaces
                         .Select(i => i.IsGenericType ? i.GetGenericTypeDefinition() : i)
-                        .LastOrDefault(i => !implementationType.ImplementedInterfaces.Any(parent => parent != i && (i.IsAssignableFrom(parent.IsGenericType ? parent.GetGenericTypeDefinition() : parent))));
+                        .Distinct()
+                        .ToList();
 
-                    abstractionType = match;
+                    abstractionType = openInterfaces
+                        .LastOrDefault(i => !openInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
                 }
 
                 // Self registration if no interfaces
@@ -345,11 +347,13 @@ namespace EasyServiceRegister
 
                 if (abstractionType == null)
                 {
-                    var match = typeInfo.ImplementedInterfaces
+                    var openInterfaces = typeInfo.ImplementedInterfaces
                         .Select(i => i.IsGenericType ? i.GetGenericTypeDefinition() : i)
-                        .LastOrDefault(i => !typeInfo.ImplementedInterfaces.Any(parent => parent != i && (i.IsAssignableFrom(parent.IsGenericType ? parent.GetGenericTypeDefinition() : parent))));
+                        .Distinct()
+                        .ToList();
 
-                    abstractionType = match;
+                    abstractionType = openInterfaces
+                        .LastOrDefault(i => !openInterfaces.Any(parent => parent != i && i.IsAssignableFrom(parent)));
                 }
 
                 if (!typeInfo.ImplementedInterfaces.Any() && abstractionType == null)

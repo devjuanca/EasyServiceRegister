@@ -8,7 +8,7 @@ public interface IGenericService<T> where T : class
 }
 
 
-[RegisterAsScoped(typeof(IGenericService<>))]
+[RegisterAsScoped]
 public class GenericService<T> : IGenericService<T> where T : class
 {
     public T DoSomething( T input)
